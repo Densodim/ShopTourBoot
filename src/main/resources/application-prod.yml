@@ -1,0 +1,10 @@
+# Production overrides. Activate with SPRING_PROFILES_ACTIVE=prod.
+#
+# The API surface is not published in production: springdoc would otherwise expose every route,
+# including the authentication endpoints, to anonymous callers. Disabling it here means the
+# endpoints do not exist at all, rather than relying on the security permit-list to hide them.
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false

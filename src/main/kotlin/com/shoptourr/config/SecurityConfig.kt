@@ -56,18 +56,8 @@ class SecurityConfig(
 			.authorizeHttpRequests { auth ->
 				auth
 					.requestMatchers(EndpointRequest.to("health", "info")).permitAll()
-					.requestMatchers(
-						"/api/auth/register",
-						"/api/auth/login",
-						"/api/auth/refresh",
-						"/api/auth/forgot-password",
-						"/api/_ping",
-					).permitAll()
-					.requestMatchers(
-						"/v3/api-docs/**",
-						"/swagger-ui/**",
-						"/swagger-ui.html",
-					).permitAll()
+					.requestMatchers(*PublicEndpoints.API.toTypedArray()).permitAll()
+					.requestMatchers(*PublicEndpoints.DOCS.toTypedArray()).permitAll()
 					.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 					.anyRequest().authenticated()
 			}
