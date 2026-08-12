@@ -32,6 +32,7 @@ skill, **this file wins**.
 | Variable | Purpose |
 |---|---|
 | `VOYAGE_JWT_SECRET` | HS256 signing secret, **min 32 chars**. Required outside local dev. |
+| `VOYAGE_CORS_ORIGINS` | Comma-separated browser origins allowed to call the API. Defaults to `http://localhost:5173,http://localhost:3000`. No wildcards — credentials are allowed. |
 
 Local defaults in `application.yml` (Postgres `voyage/voyage@localhost:5432/voyage`,
 Redis `localhost:6379`, mail `localhost:1025`) are for development only.
@@ -53,7 +54,8 @@ Redis `localhost:6379`, mail `localhost:1025`) are for development only.
 
 - Tables and columns: `snake_case`, `UUID` PK, `TIMESTAMPTZ`, soft delete via `deleted_at`.
 - Error codes: `SCREAMING_SNAKE_CASE` (`VALIDATION_ERROR`), `type` URI under
-  `https://api.shoptourr.com/problems/...`.
+  `https://api.shoptourr.com/problems/...`. Build them through `web/ApiProblem.kt` — it is the
+  single owner of the error contract, together with `ApiExceptionHandler`.
 - Config prefix for app settings: `voyage.*`.
 - Correlation header: `X-Request-Id` (see `RequestIdFilter`).
 

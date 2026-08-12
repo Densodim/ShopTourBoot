@@ -16,6 +16,7 @@ Spring Boot **4.1** / Java **21** / Kotlin backend for [ShopTourr](https://githu
 ```bash
 # Postgres + Redis must be up (or use TestVoyageApplication with Docker)
 export VOYAGE_JWT_SECRET='dev-only-change-me-to-a-32byte-secret!!'
+export VOYAGE_CORS_ORIGINS='http://localhost:5173'   # optional, this is the default
 ./gradlew bootRun
 ```
 

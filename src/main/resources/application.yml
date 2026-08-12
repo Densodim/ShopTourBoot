@@ -46,6 +46,9 @@ management:
         enabled: true
 
 voyage:
+  cors:
+    # Local front-end dev servers only — override in deployed environments.
+    allowed-origins: ${VOYAGE_CORS_ORIGINS:http://localhost:5173,http://localhost:3000}
   jwt:
     # HS256 secret — override in prod via VOYAGE_JWT_SECRET (min 32 chars)
     secret: ${VOYAGE_JWT_SECRET:dev-only-change-me-to-a-32byte-secret!!}
