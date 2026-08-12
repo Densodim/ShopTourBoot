@@ -22,10 +22,37 @@ skill, **this file wins**.
 ./gradlew bootRun        # needs Postgres + Redis on localhost and VOYAGE_JWT_SECRET set
 ```
 
+```bash
+./gradlew bootTestRun    # runs TestVoyageApplication — Testcontainers supplies Postgres + Redis
+```
+
 - Always use the **wrapper** (`./gradlew`), never a system `gradle`.
-- To run against throwaway containers instead of local services, run `TestVoyageApplication`
-  (it starts the app with `TestcontainersConfiguration`).
+- `bootTestRun` is the usual way to run locally: no local Postgres/Redis needed, containers are
+  thrown away on exit. App on `http://localhost:8080`.
 - Never add a `pom.xml` or Maven wrapper — this is a Gradle Kotlin DSL build.
+
+### Container runtime — colima needs an explicit socket
+
+This machine uses **colima**, not Docker Desktop. Testcontainers does *not* pick up colima's
+docker context on its own: without these variables `VoyageApplicationTests` is **silently
+skipped** (`@Testcontainers(disabledWithoutDocker = true)`) and `bootTestRun` cannot start,
+even though `docker ps` works fine.
+
+```bash
+export DOCKER_HOST="unix://$HOME/.colima/default/docker.sock"
+export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock
+```
+
+`DOCKER_HOST` is what makes Testcontainers find the daemon; the socket override is what lets
+the Ryuk cleanup container mount the socket from inside the VM.
+
+Start the VM first with `colima start` (`colima stop` when done). **A green `./gradlew test`
+proves nothing about the integration layer unless these variables were set** — check the skip
+count, not just the exit code:
+
+```bash
+grep -o 'tests="[0-9]*" skipped="[0-9]*"' build/test-results/test/*.xml
+```
 
 ## Environment
 
