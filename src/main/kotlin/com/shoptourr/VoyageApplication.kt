@@ -1,11 +1,11 @@
-package com.ShopTourBoot.ShopTourBoot
+package com.shoptourr
 
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
 
 @SpringBootApplication
-class ShopTourBootApplication
+class VoyageApplication
 
 fun main(args: Array<String>) {
-	runApplication<ShopTourBootApplication>(*args)
+	runApplication<VoyageApplication>(*args)
 }

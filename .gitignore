@@ -38,3 +38,11 @@ out/
 
 ### Kotlin ###
 .kotlin
+
+### Local / OS ###
+local.properties
+.DS_Store
+**/application-local.yml
+**/application-local.properties
+.env
+.env.*
