@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
 import org.springframework.web.context.request.WebRequest
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler
+import org.springframework.web.servlet.resource.NoResourceFoundException
 
 /**
  * Owns the API error contract.
@@ -50,6 +51,25 @@ class ApiExceptionHandler : ResponseEntityExceptionHandler() {
 					"message" to (err.defaultMessage ?: "invalid"),
 				)
 			},
+		)
+		return handleExceptionInternal(ex, problem, headers, status, request)
+	}
+
+	/**
+	 * Spring's own message is "No static resource api/orders." — an implementation detail of the
+	 * resource handler that has no business leaking to an API client.
+	 */
+	override fun handleNoResourceFoundException(
+		ex: NoResourceFoundException,
+		headers: HttpHeaders,
+		status: HttpStatusCode,
+		request: WebRequest,
+	): ResponseEntity<Any>? {
+		val problem = ApiProblem.of(
+			HttpStatus.NOT_FOUND,
+			ApiProblem.NOT_FOUND,
+			"Not found",
+			"No endpoint matches this request.",
 		)
 		return handleExceptionInternal(ex, problem, headers, status, request)
 	}

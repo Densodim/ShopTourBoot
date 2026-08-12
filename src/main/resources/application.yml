@@ -44,6 +44,12 @@ management:
     health:
       probes:
         enabled: true
+  health:
+    # Mail is best-effort: password-reset delivery failing does not make the API unable to serve
+    # requests. Leaving this on marks the whole service DOWN whenever SMTP is unreachable —
+    # permanently so on a dev machine with no local mail server.
+    mail:
+      enabled: false
 
 voyage:
   cors:

@@ -76,6 +76,12 @@ class HealthApiControllerTest {
 	}
 
 	@Test
+	fun `a 404 does not leak Spring's static-resource wording`() {
+		mockMvc.perform(get("/api/protected-thing").with(jwt()))
+			.andExpect(jsonPath("$.detail").value("No endpoint matches this request."))
+	}
+
+	@Test
 	fun `preflight from an allowed origin is accepted`() {
 		mockMvc.perform(
 			options("/api/_ping")
@@ -95,5 +101,17 @@ class HealthApiControllerTest {
 		)
 			.andExpect(status().isForbidden)
 			.andExpect(header().doesNotExist(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN))
+	}
+
+	@Test
+	fun `a rejected preflight follows the error contract like everything else`() {
+		mockMvc.perform(
+			options("/api/_ping")
+				.header(HttpHeaders.ORIGIN, "https://not-our-frontend.example.com")
+				.header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "GET"),
+		)
+			.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+			.andExpect(jsonPath("$.code").value(ApiProblem.FORBIDDEN))
+			.andExpect(jsonPath("$.status").value(403))
 	}
 }

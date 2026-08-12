@@ -2,6 +2,8 @@ package com.shoptourr.config
 
 import com.shoptourr.web.ProblemAccessDeniedHandler
 import com.shoptourr.web.ProblemAuthenticationEntryPoint
+import com.shoptourr.web.ProblemCorsProcessor
+import tools.jackson.databind.json.JsonMapper
 import org.springframework.boot.security.autoconfigure.actuate.web.servlet.EndpointRequest
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -17,6 +19,7 @@ import org.springframework.security.web.SecurityFilterChain
 import org.springframework.web.cors.CorsConfiguration
 import org.springframework.web.cors.CorsConfigurationSource
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource
+import org.springframework.web.filter.CorsFilter
 
 @Configuration
 @EnableWebSecurity
@@ -42,6 +45,20 @@ class SecurityConfig(
 			registerCorsConfiguration("/**", configuration)
 		}
 	}
+
+	/**
+	 * Named `corsFilter` on purpose: `CorsConfigurer` picks up a bean with this exact name, so
+	 * `http.cors(...)` uses this instance — and with it [ProblemCorsProcessor] — instead of
+	 * building a default one.
+	 */
+	@Bean
+	fun corsFilter(
+		corsConfigurationSource: CorsConfigurationSource,
+		jsonMapper: JsonMapper,
+	): CorsFilter =
+		CorsFilter(corsConfigurationSource).apply {
+			setCorsProcessor(ProblemCorsProcessor(jsonMapper))
+		}
 
 	@Bean
 	fun securityFilterChain(
