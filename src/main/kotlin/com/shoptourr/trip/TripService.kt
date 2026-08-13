@@ -7,6 +7,7 @@ import com.shoptourr.identity.AppUserRepository
 import com.shoptourr.purchase.PurchaseRepository
 import com.shoptourr.shared.dto.ExchangeRateDto
 import com.shoptourr.shared.dto.MoneyDto
+import com.shoptourr.trip.dto.CreateTravelerRequest
 import com.shoptourr.trip.dto.CreateTripRequest
 import com.shoptourr.trip.dto.TravelerDto
 import com.shoptourr.trip.dto.TripDto
@@ -151,6 +152,37 @@ class TripService(
 			throw ResourceNotFoundException("User not found.")
 		}
 		return user
+	}
+
+	@Transactional
+	fun addTraveler(ownerId: UUID, tripId: UUID, request: CreateTravelerRequest): TravelerDto {
+		val trip = requireOwned(ownerId, tripId)
+		addTraveler(
+			trip,
+			name = request.name.trim(),
+			colorHex = request.colorHex.uppercase(),
+			avatarGlyph = request.avatarGlyph?.trim()?.takeIf { it.isNotBlank() } ?: glyph(request.name),
+			isOwner = false,
+			userId = null,
+			now = Instant.now(clock),
+		)
+		trip.updatedAt = Instant.now(clock)
+		return trip.travelers.last().toDto()
+	}
+
+	@Transactional
+	fun refreshExchangeRate(ownerId: UUID, tripId: UUID): ExchangeRateDto {
+		val trip = requireOwned(ownerId, tripId)
+		val today = LocalDate.now(clock)
+		applyFx(trip, trip.fxQuoteCurrency ?: trip.budgetCurrency, today)
+		trip.updatedAt = Instant.now(clock)
+		return ExchangeRateDto(
+			tripCurrency = trip.fxTripCurrency ?: trip.budgetCurrency,
+			quoteCurrency = trip.fxQuoteCurrency ?: trip.budgetCurrency,
+			rate = trip.fxRate ?: BigDecimal.ONE,
+			rateDate = today.toString(),
+			provider = trip.fxProvider,
+		)
 	}
 
 	private fun addTraveler(

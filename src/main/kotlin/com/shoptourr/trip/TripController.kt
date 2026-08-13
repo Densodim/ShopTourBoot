@@ -1,9 +1,11 @@
 package com.shoptourr.trip
 
 import com.shoptourr.identity.userId
+import com.shoptourr.trip.dto.CreateTravelerRequest
 import com.shoptourr.trip.dto.CreateTripRequest
 import com.shoptourr.trip.dto.TripDto
 import com.shoptourr.trip.dto.UpdateTripRequest
+import com.shoptourr.shared.dto.ExchangeRateDto
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -60,4 +62,20 @@ class TripController(
 	) {
 		tripService.delete(jwt.userId(), tripId)
 	}
+
+	@PostMapping("/{tripId}/travelers")
+	fun addTraveler(
+		@AuthenticationPrincipal jwt: Jwt,
+		@PathVariable tripId: UUID,
+		@Valid @RequestBody request: CreateTravelerRequest,
+	): ResponseEntity<com.shoptourr.trip.dto.TravelerDto> {
+		val body = tripService.addTraveler(jwt.userId(), tripId, request)
+		return ResponseEntity.status(HttpStatus.CREATED).body(body)
+	}
+
+	@PostMapping("/{tripId}/exchange-rate/refresh")
+	fun refreshFx(
+		@AuthenticationPrincipal jwt: Jwt,
+		@PathVariable tripId: UUID,
+	) = tripService.refreshExchangeRate(jwt.userId(), tripId)
 }
