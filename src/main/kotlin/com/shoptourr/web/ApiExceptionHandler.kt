@@ -1,5 +1,8 @@
 package com.shoptourr.web
 
+import com.shoptourr.AuthenticationFailedException
+import com.shoptourr.ResourceConflictException
+import com.shoptourr.ResourceNotFoundException
 import jakarta.validation.ConstraintViolationException
 import org.slf4j.LoggerFactory
 import org.springframework.dao.DataIntegrityViolationException
@@ -95,6 +98,33 @@ class ApiExceptionHandler : ResponseEntityExceptionHandler() {
 		)
 		return problem
 	}
+
+	@ExceptionHandler(ResourceConflictException::class)
+	fun conflict(ex: ResourceConflictException): ProblemDetail =
+		ApiProblem.of(
+			HttpStatus.CONFLICT,
+			ApiProblem.CONFLICT,
+			"Conflict",
+			ex.message ?: "The request conflicts with the current state of the resource.",
+		)
+
+	@ExceptionHandler(ResourceNotFoundException::class)
+	fun notFound(ex: ResourceNotFoundException): ProblemDetail =
+		ApiProblem.of(
+			HttpStatus.NOT_FOUND,
+			ApiProblem.NOT_FOUND,
+			"Not found",
+			ex.message ?: "No such resource.",
+		)
+
+	@ExceptionHandler(AuthenticationFailedException::class)
+	fun authenticationFailed(ex: AuthenticationFailedException): ProblemDetail =
+		ApiProblem.of(
+			HttpStatus.UNAUTHORIZED,
+			ApiProblem.UNAUTHORIZED,
+			"Unauthorized",
+			ex.message ?: "Authentication is required to access this resource.",
+		)
 
 	/** Thrown by method security (`@PreAuthorize`); filter-chain denials go through [ProblemAccessDeniedHandler]. */
 	@ExceptionHandler(AccessDeniedException::class)

@@ -52,6 +52,8 @@ management:
       enabled: false
 
 voyage:
+  mail:
+    from: ${VOYAGE_MAIL_FROM:noreply@shoptourr.com}
   cors:
     # Local front-end dev servers only — override in deployed environments.
     allowed-origins: ${VOYAGE_CORS_ORIGINS:http://localhost:5173,http://localhost:3000}
