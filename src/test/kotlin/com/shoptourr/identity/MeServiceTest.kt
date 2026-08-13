@@ -17,6 +17,7 @@ import org.mockito.Mockito.lenient
 import org.mockito.Mockito.`when`
 import org.mockito.junit.jupiter.MockitoExtension
 import com.shoptourr.trip.TripService
+import com.shoptourr.wishlist.WishlistService
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
@@ -32,13 +33,16 @@ class MeServiceTest {
 	@Mock
 	private lateinit var tripService: TripService
 
+	@Mock
+	private lateinit var wishlistService: WishlistService
+
 	private val clock = Clock.fixed(Instant.parse("2026-08-13T12:00:00Z"), ZoneOffset.UTC)
 	private lateinit var service: MeService
 	private lateinit var user: AppUser
 
 	@BeforeEach
 	fun setUp() {
-		service = MeService(users, ClientProperties(minAndroidBuild = 12, minIosBuild = 34), clock, tripService)
+		service = MeService(users, ClientProperties(minAndroidBuild = 12, minIosBuild = 34), clock, tripService, wishlistService)
 		user = AppUser(
 			email = "ada@example.com",
 			passwordHash = "hash",
@@ -49,6 +53,7 @@ class MeServiceTest {
 		)
 		lenient().`when`(users.findById(user.id)).thenReturn(Optional.of(user))
 		lenient().`when`(tripService.countsFor(user.id)).thenReturn(0 to 0)
+		lenient().`when`(wishlistService.countFor(user.id)).thenReturn(0)
 	}
 
 	@Test

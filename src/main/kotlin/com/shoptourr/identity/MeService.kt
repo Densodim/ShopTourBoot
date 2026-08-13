@@ -12,6 +12,7 @@ import com.shoptourr.identity.dto.UserDto
 import com.shoptourr.identity.dto.UserPreferencesDto
 import com.shoptourr.identity.dto.UserStatsDto
 import com.shoptourr.trip.TripService
+import com.shoptourr.wishlist.WishlistService
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
@@ -24,13 +25,14 @@ class MeService(
 	private val clientProperties: ClientProperties,
 	private val clock: Clock,
 	private val tripService: TripService,
+	private val wishlistService: WishlistService,
 ) {
 
 	@Transactional(readOnly = true)
 	fun getMe(userId: UUID): UserDto {
 		val user = requireLiveUser(userId)
 		val (tripsCount, countriesCount) = tripService.countsFor(userId)
-		return user.toDto(tripsCount, countriesCount)
+		return user.toDto(tripsCount, countriesCount, wishlistService.countFor(userId))
 	}
 
 	@Transactional
@@ -40,7 +42,7 @@ class MeService(
 		user.avatarMediaId = request.avatarMediaId
 		user.updatedAt = Instant.now(clock)
 		val (tripsCount, countriesCount) = tripService.countsFor(userId)
-		return user.toDto(tripsCount, countriesCount)
+		return user.toDto(tripsCount, countriesCount, wishlistService.countFor(userId))
 	}
 
 	@Transactional(readOnly = true)
