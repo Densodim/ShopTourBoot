@@ -4,6 +4,7 @@ import com.shoptourr.DomainValidationException
 import com.shoptourr.ResourceNotFoundException
 import com.shoptourr.identity.AppUser
 import com.shoptourr.identity.AppUserRepository
+import com.shoptourr.purchase.PurchaseRepository
 import com.shoptourr.shared.dto.ExchangeRateDto
 import com.shoptourr.shared.dto.MoneyDto
 import com.shoptourr.trip.dto.CreateTripRequest
@@ -16,6 +17,7 @@ import com.shoptourr.trip.dto.UpdateTripRequest
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
+import java.math.RoundingMode
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
@@ -29,6 +31,7 @@ class TripService(
 	private val trips: TripRepository,
 	private val users: AppUserRepository,
 	private val clock: Clock,
+	private val purchases: PurchaseRepository,
 ) {
 
 	@Transactional
@@ -134,7 +137,7 @@ class TripService(
 		return live.size to live.map { it.country }.distinct().size
 	}
 
-	private fun requireOwned(ownerId: UUID, tripId: UUID): Trip {
+	fun requireOwned(ownerId: UUID, tripId: UUID): Trip {
 		val trip = trips.findByIdAndDeletedAtIsNull(tripId)
 		if (trip == null || trip.ownerId != ownerId) {
 			throw ResourceNotFoundException("Trip not found.")
@@ -181,8 +184,8 @@ class TripService(
 
 	private fun toDto(trip: Trip, today: LocalDate): TripDto {
 		val status = resolveStatus(trip, today)
-		val spent = MoneyDto(BigDecimal.ZERO, trip.budgetCurrency)
-		val budget = MoneyDto(trip.budgetAmount, trip.budgetCurrency)
+		val spent = MoneyDto(purchases.sumGrossByTripId(trip.id).setScale(2, RoundingMode.HALF_UP), trip.budgetCurrency)
+		val budget = MoneyDto(trip.budgetAmount.setScale(2, RoundingMode.HALF_UP), trip.budgetCurrency)
 		return TripDto(
 			id = trip.id,
 			city = trip.city,
@@ -196,7 +199,7 @@ class TripService(
 			budget = budget,
 			spent = spent,
 			remaining = MoneyDto(budget.amount.subtract(spent.amount), budget.currency),
-			purchaseCount = 0,
+			purchaseCount = purchases.countByTripIdAndDeletedAtIsNull(trip.id),
 			dayCount = dayCount(trip.startDate, trip.endDate),
 			currentDayNumber = currentDay(status, trip.startDate, trip.endDate, today),
 			defaultVatRatePercent = trip.defaultVatRatePercent,

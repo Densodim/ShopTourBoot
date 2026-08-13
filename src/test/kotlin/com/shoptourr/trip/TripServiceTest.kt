@@ -4,6 +4,7 @@ import com.shoptourr.DomainValidationException
 import com.shoptourr.ResourceNotFoundException
 import com.shoptourr.identity.AppUser
 import com.shoptourr.identity.AppUserRepository
+import com.shoptourr.purchase.PurchaseRepository
 import com.shoptourr.shared.dto.MoneyDto
 import com.shoptourr.trip.dto.CreateTripRequest
 import com.shoptourr.trip.dto.TripStatus
@@ -36,13 +37,16 @@ class TripServiceTest {
 	@Mock
 	private lateinit var users: AppUserRepository
 
+	@Mock
+	private lateinit var purchaseRepo: PurchaseRepository
+
 	private val clock = Clock.fixed(Instant.parse("2026-08-13T12:00:00Z"), ZoneOffset.UTC)
 	private lateinit var service: TripService
 	private lateinit var owner: AppUser
 
 	@BeforeEach
 	fun setUp() {
-		service = TripService(trips, users, clock)
+		service = TripService(trips, users, clock, purchaseRepo)
 		owner = AppUser(
 			email = "ada@example.com",
 			passwordHash = "hash",
@@ -53,6 +57,8 @@ class TripServiceTest {
 		)
 		lenient().`when`(users.findById(owner.id)).thenReturn(Optional.of(owner))
 		lenient().`when`(trips.save(any(Trip::class.java))).thenAnswer { it.arguments[0] }
+		lenient().`when`(purchaseRepo.sumGrossByTripId(any() ?: UUID.randomUUID())).thenReturn(BigDecimal.ZERO)
+		lenient().`when`(purchaseRepo.countByTripIdAndDeletedAtIsNull(any() ?: UUID.randomUUID())).thenReturn(0)
 	}
 
 	@Test
@@ -67,7 +73,7 @@ class TripServiceTest {
 		assertEquals(1, result.travelers.size)
 		assertTrue(result.travelers.single().isOwner)
 		assertEquals("Ada", result.travelers.single().name)
-		assertEquals(BigDecimal.ZERO, result.spent.amount)
+		assertEquals(0, result.spent.amount.compareTo(BigDecimal.ZERO))
 	}
 
 	@Test

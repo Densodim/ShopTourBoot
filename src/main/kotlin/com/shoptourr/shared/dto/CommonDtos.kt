@@ -24,3 +24,11 @@ data class ExchangeRateDto(
 	val rateDate: String,
 	val provider: String? = null,
 )
+
+data class VatBreakdownDto(
+	val net: BigDecimal,
+	val vat: BigDecimal,
+	val gross: BigDecimal,
+	val vatRatePercent: BigDecimal,
+	val vatIncluded: Boolean,
+)
