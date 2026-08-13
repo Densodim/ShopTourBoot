@@ -11,23 +11,35 @@ Spring Boot **4.1** / Java **21** / Kotlin backend for [ShopTourr](https://githu
 - springdoc OpenAPI
 - Testcontainers (Postgres 16 + Redis 7) when Docker is available
 
-## Run (local)
+## Run (usual: containers, no local services)
 
 ```bash
-# Postgres + Redis must be up (or use TestVoyageApplication with Docker)
+./scripts/run.sh
+```
+
+The script starts **colima** if needed, exports the Docker socket Testcontainers requires, then
+runs `./gradlew bootTestRun`. App: `http://localhost:8080`. Stop with Ctrl+C (containers are
+thrown away).
+
+Equivalent by hand:
+
+```bash
+colima start
+export DOCKER_HOST="unix://$HOME/.colima/default/docker.sock"
+export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock
 export VOYAGE_JWT_SECRET='dev-only-change-me-to-a-32byte-secret!!'
-export VOYAGE_CORS_ORIGINS='http://localhost:5173'   # optional, this is the default
-./gradlew bootRun
+./gradlew bootTestRun
 ```
 
 Smoke: `GET /api/_ping`, Actuator: `GET /actuator/health`, Swagger: `/swagger-ui.html`.
 
-## Run (containers, no local services)
+## Run (local Postgres + Redis)
 
-Testcontainers supplies Postgres 16 and Redis 7, thrown away on exit:
+Needs Postgres and Redis already on localhost (`voyage/voyage@localhost:5432/voyage`, Redis `6379`):
 
 ```bash
-./gradlew bootTestRun
+export VOYAGE_JWT_SECRET='dev-only-change-me-to-a-32byte-secret!!'
+./gradlew bootRun
 ```
 
 ## Container runtime
