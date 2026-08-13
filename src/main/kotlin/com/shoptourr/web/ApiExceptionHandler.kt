@@ -2,6 +2,7 @@ package com.shoptourr.web
 
 import com.shoptourr.AuthenticationFailedException
 import com.shoptourr.DomainValidationException
+import com.shoptourr.MediaNotReadyException
 import com.shoptourr.ResourceConflictException
 import com.shoptourr.ResourceNotFoundException
 import jakarta.validation.ConstraintViolationException
@@ -107,6 +108,15 @@ class ApiExceptionHandler : ResponseEntityExceptionHandler() {
 			ApiProblem.VALIDATION_ERROR,
 			"Validation failed",
 			ex.message ?: "Validation failed",
+		)
+
+	@ExceptionHandler(MediaNotReadyException::class)
+	fun mediaNotReady(ex: MediaNotReadyException): ProblemDetail =
+		ApiProblem.of(
+			HttpStatus.CONFLICT,
+			ApiProblem.MEDIA_NOT_READY,
+			"Media not ready",
+			ex.message ?: "Media is not ready.",
 		)
 
 	@ExceptionHandler(ResourceConflictException::class)

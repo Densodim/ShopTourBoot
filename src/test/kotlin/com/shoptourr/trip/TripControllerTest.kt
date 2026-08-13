@@ -105,6 +105,32 @@ class TripControllerTest {
 			.andExpect(status().isNoContent)
 	}
 
+	@Test
+	fun `invite returns 201`() {
+		val inviteId = UUID.fromString("66666666-6666-6666-6666-666666666666")
+		val request = com.shoptourr.trip.dto.InviteTravelerRequest("bob@example.com")
+		`when`(tripService.inviteTraveler(eq(userId) ?: userId, eq(tripId) ?: tripId, any() ?: request))
+			.thenReturn(
+				com.shoptourr.trip.dto.TripInviteDto(
+					id = inviteId,
+					tripId = tripId,
+					email = "bob@example.com",
+					status = com.shoptourr.trip.dto.TripInviteStatus.PENDING,
+					createdAt = Instant.parse("2026-08-13T12:00:00Z"),
+					expiresAt = Instant.parse("2026-08-20T12:00:00Z"),
+				),
+			)
+
+		mockMvc.perform(
+			post("/api/trips/$tripId/invites")
+				.with(userJwt())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""{"email":"bob@example.com"}"""),
+		)
+			.andExpect(status().isCreated)
+			.andExpect(jsonPath("$.status").value("PENDING"))
+	}
+
 	private fun userJwt() = jwt().jwt { it.subject(userId.toString()) }
 
 	private fun sampleTrip() = TripDto(

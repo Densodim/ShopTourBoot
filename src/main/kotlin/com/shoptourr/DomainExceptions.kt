@@ -11,3 +11,5 @@ class ResourceNotFoundException(message: String) : RuntimeException(message)
 class AuthenticationFailedException(message: String) : RuntimeException(message)
 
 class DomainValidationException(message: String) : RuntimeException(message)
+
+class MediaNotReadyException(message: String = "Media is not ready.") : RuntimeException(message)

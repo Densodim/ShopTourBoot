@@ -21,6 +21,7 @@ object ApiProblem {
 	const val FORBIDDEN = "FORBIDDEN"
 	const val NOT_FOUND = "NOT_FOUND"
 	const val CONFLICT = "CONFLICT"
+	const val MEDIA_NOT_READY = "MEDIA_NOT_READY"
 	const val INTERNAL_ERROR = "INTERNAL_ERROR"
 
 	fun of(

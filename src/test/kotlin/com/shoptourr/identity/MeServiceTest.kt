@@ -92,6 +92,14 @@ class MeServiceTest {
 	}
 
 	@Test
+	fun `activatePremium updates the plan`() {
+		val dto = service.activatePremium(user.id, com.shoptourr.identity.dto.ActivatePremiumRequest(com.shoptourr.identity.dto.PremiumPlan.PLUS))
+
+		assertEquals(com.shoptourr.identity.dto.PremiumPlan.PLUS, dto.premiumPlan)
+		assertEquals("PLUS", user.premiumPlan)
+	}
+
+	@Test
 	fun `missing user is not found`() {
 		val missing = UUID.fromString("22222222-2222-2222-2222-222222222222")
 		`when`(users.findById(missing)).thenReturn(Optional.empty())

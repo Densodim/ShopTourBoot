@@ -124,3 +124,24 @@ data class TripListResponse(
 	val upcoming: List<TripSummaryDto>,
 	val past: List<TripSummaryDto>,
 )
+
+enum class TripInviteStatus {
+	PENDING, ACCEPTED, DECLINED, EXPIRED
+}
+
+data class InviteTravelerRequest(
+	@field:NotBlank
+	@field:Size(max = 254)
+	val email: String,
+	@field:Size(min = 1, max = 60)
+	val displayNameHint: String? = null,
+)
+
+data class TripInviteDto(
+	val id: UUID,
+	val tripId: UUID,
+	val email: String,
+	val status: TripInviteStatus,
+	val createdAt: Instant,
+	val expiresAt: Instant?,
+)

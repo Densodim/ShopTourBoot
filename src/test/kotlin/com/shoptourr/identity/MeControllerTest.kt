@@ -24,6 +24,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import java.time.Instant
@@ -104,6 +105,21 @@ class MeControllerTest {
 	fun `app config is authenticated`() {
 		mockMvc.perform(get("/api/me/app-config"))
 			.andExpect(status().isUnauthorized)
+	}
+
+	@Test
+	fun `activate premium returns the updated plan`() {
+		`when`(meService.activatePremium(userId, com.shoptourr.identity.dto.ActivatePremiumRequest(PremiumPlan.PLUS)))
+			.thenReturn(sampleUser().copy(premiumPlan = PremiumPlan.PLUS))
+
+		mockMvc.perform(
+			post("/api/me/premium/activate")
+				.with(userJwt())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""{"plan":"PLUS"}"""),
+		)
+			.andExpect(status().isOk)
+			.andExpect(jsonPath("$.premiumPlan").value("PLUS"))
 	}
 
 	private fun userJwt() = jwt().jwt { it.subject(userId.toString()) }

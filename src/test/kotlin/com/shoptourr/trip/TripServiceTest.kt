@@ -40,13 +40,16 @@ class TripServiceTest {
 	@Mock
 	private lateinit var purchaseRepo: PurchaseRepository
 
+	@Mock
+	private lateinit var invites: TripInviteRepository
+
 	private val clock = Clock.fixed(Instant.parse("2026-08-13T12:00:00Z"), ZoneOffset.UTC)
 	private lateinit var service: TripService
 	private lateinit var owner: AppUser
 
 	@BeforeEach
 	fun setUp() {
-		service = TripService(trips, users, clock, purchaseRepo)
+		service = TripService(trips, users, clock, purchaseRepo, invites)
 		owner = AppUser(
 			email = "ada@example.com",
 			passwordHash = "hash",

@@ -1,6 +1,7 @@
 package com.shoptourr.identity.dto
 
 import jakarta.validation.constraints.NotBlank
+import jakarta.validation.constraints.NotNull
 import jakarta.validation.constraints.Pattern
 import jakarta.validation.constraints.Size
 import java.time.Instant
@@ -32,6 +33,11 @@ data class UserDto(
 	val memberSince: Instant,
 	val premiumPlan: PremiumPlan,
 	val stats: UserStatsDto,
+)
+
+data class ActivatePremiumRequest(
+	@field:NotNull
+	val plan: PremiumPlan,
 )
 
 data class UpdateProfileRequest(

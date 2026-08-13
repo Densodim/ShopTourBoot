@@ -61,6 +61,12 @@ voyage:
       export-pdf: true
       ocr-assist: true
       native-maps: false
+  media:
+    public-base-url: ${VOYAGE_PUBLIC_BASE_URL:http://localhost:8080}
+    upload-ttl: 15m
+  export:
+    public-base-url: ${VOYAGE_PUBLIC_BASE_URL:http://localhost:8080}
+    download-ttl: 24h
   cors:
     # Local front-end dev servers only — override in deployed environments.
     allowed-origins: ${VOYAGE_CORS_ORIGINS:http://localhost:5173,http://localhost:3000}

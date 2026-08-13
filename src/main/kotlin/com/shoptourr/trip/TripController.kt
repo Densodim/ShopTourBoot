@@ -3,7 +3,10 @@ package com.shoptourr.trip
 import com.shoptourr.identity.userId
 import com.shoptourr.trip.dto.CreateTravelerRequest
 import com.shoptourr.trip.dto.CreateTripRequest
+import com.shoptourr.trip.dto.InviteTravelerRequest
+import com.shoptourr.trip.dto.TravelerDto
 import com.shoptourr.trip.dto.TripDto
+import com.shoptourr.trip.dto.TripInviteDto
 import com.shoptourr.trip.dto.UpdateTripRequest
 import com.shoptourr.shared.dto.ExchangeRateDto
 import jakarta.validation.Valid
@@ -68,9 +71,19 @@ class TripController(
 		@AuthenticationPrincipal jwt: Jwt,
 		@PathVariable tripId: UUID,
 		@Valid @RequestBody request: CreateTravelerRequest,
-	): ResponseEntity<com.shoptourr.trip.dto.TravelerDto> {
+	): ResponseEntity<TravelerDto> {
 		val body = tripService.addTraveler(jwt.userId(), tripId, request)
 		return ResponseEntity.status(HttpStatus.CREATED).body(body)
+	}
+
+	@PostMapping("/{tripId}/invites")
+	fun invite(
+		@AuthenticationPrincipal jwt: Jwt,
+		@PathVariable tripId: UUID,
+		@Valid @RequestBody request: InviteTravelerRequest,
+	): ResponseEntity<TripInviteDto> {
+		val body = tripService.inviteTraveler(jwt.userId(), tripId, request)
+		return ResponseEntity.created(URI.create("/api/trips/$tripId/invites/${body.id}")).body(body)
 	}
 
 	@PostMapping("/{tripId}/exchange-rate/refresh")

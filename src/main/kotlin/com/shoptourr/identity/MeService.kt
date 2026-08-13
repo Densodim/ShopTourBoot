@@ -2,6 +2,7 @@ package com.shoptourr.identity
 
 import com.shoptourr.ResourceNotFoundException
 import com.shoptourr.config.ClientProperties
+import com.shoptourr.identity.dto.ActivatePremiumRequest
 import com.shoptourr.identity.dto.ClientRemoteConfigDto
 import com.shoptourr.identity.dto.FeatureFlagsDto
 import com.shoptourr.identity.dto.PremiumPlan
@@ -40,6 +41,15 @@ class MeService(
 		val user = requireLiveUser(userId)
 		user.displayName = request.displayName.trim()
 		user.avatarMediaId = request.avatarMediaId
+		user.updatedAt = Instant.now(clock)
+		val (tripsCount, countriesCount) = tripService.countsFor(userId)
+		return user.toDto(tripsCount, countriesCount, wishlistService.countFor(userId))
+	}
+
+	@Transactional
+	fun activatePremium(userId: UUID, request: ActivatePremiumRequest): UserDto {
+		val user = requireLiveUser(userId)
+		user.premiumPlan = request.plan.name
 		user.updatedAt = Instant.now(clock)
 		val (tripsCount, countriesCount) = tripService.countsFor(userId)
 		return user.toDto(tripsCount, countriesCount, wishlistService.countFor(userId))

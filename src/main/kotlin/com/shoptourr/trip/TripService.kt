@@ -1,6 +1,7 @@
 package com.shoptourr.trip
 
 import com.shoptourr.DomainValidationException
+import com.shoptourr.ResourceConflictException
 import com.shoptourr.ResourceNotFoundException
 import com.shoptourr.identity.AppUser
 import com.shoptourr.identity.AppUserRepository
@@ -9,8 +10,11 @@ import com.shoptourr.shared.dto.ExchangeRateDto
 import com.shoptourr.shared.dto.MoneyDto
 import com.shoptourr.trip.dto.CreateTravelerRequest
 import com.shoptourr.trip.dto.CreateTripRequest
+import com.shoptourr.trip.dto.InviteTravelerRequest
 import com.shoptourr.trip.dto.TravelerDto
 import com.shoptourr.trip.dto.TripDto
+import com.shoptourr.trip.dto.TripInviteDto
+import com.shoptourr.trip.dto.TripInviteStatus
 import com.shoptourr.trip.dto.TripListResponse
 import com.shoptourr.trip.dto.TripStatus
 import com.shoptourr.trip.dto.TripSummaryDto
@@ -20,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Clock
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -33,6 +38,7 @@ class TripService(
 	private val users: AppUserRepository,
 	private val clock: Clock,
 	private val purchases: PurchaseRepository,
+	private val invites: TripInviteRepository,
 ) {
 
 	@Transactional
@@ -171,6 +177,34 @@ class TripService(
 	}
 
 	@Transactional
+	fun inviteTraveler(ownerId: UUID, tripId: UUID, request: InviteTravelerRequest): TripInviteDto {
+		requireOwned(ownerId, tripId)
+		val email = request.email.trim().lowercase()
+		if (invites.findByTripIdAndEmailAndStatus(tripId, email, TripInviteStatus.PENDING.name) != null) {
+			throw ResourceConflictException("An invite for this email is already pending.")
+		}
+		val now = Instant.now(clock)
+		val invite = invites.save(
+			TripInvite(
+				tripId = tripId,
+				email = email,
+				displayNameHint = request.displayNameHint?.trim()?.takeIf { it.isNotBlank() },
+				status = TripInviteStatus.PENDING.name,
+				createdAt = now,
+				expiresAt = now.plus(INVITE_TTL),
+			),
+		)
+		return TripInviteDto(
+			id = invite.id,
+			tripId = invite.tripId,
+			email = invite.email,
+			status = TripInviteStatus.PENDING,
+			createdAt = invite.createdAt,
+			expiresAt = invite.expiresAt,
+		)
+	}
+
+	@Transactional
 	fun refreshExchangeRate(ownerId: UUID, tripId: UUID): ExchangeRateDto {
 		val trip = requireOwned(ownerId, tripId)
 		val today = LocalDate.now(clock)
@@ -271,6 +305,7 @@ class TripService(
 
 	companion object {
 		const val OWNER_COLOR = "#FFD84D"
+		private val INVITE_TTL = Duration.ofDays(7)
 		private val MONTH = DateTimeFormatter.ofPattern("MMM", Locale.ENGLISH)
 		private val FLAGS = mapOf(
 			"PT" to "🇵🇹",
