@@ -22,6 +22,7 @@ object ApiProblem {
 	const val NOT_FOUND = "NOT_FOUND"
 	const val CONFLICT = "CONFLICT"
 	const val MEDIA_NOT_READY = "MEDIA_NOT_READY"
+	const val IDEMPOTENCY_CONFLICT = "IDEMPOTENCY_CONFLICT"
 	const val INTERNAL_ERROR = "INTERNAL_ERROR"
 
 	fun of(

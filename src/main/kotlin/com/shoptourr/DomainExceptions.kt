@@ -13,3 +13,5 @@ class AuthenticationFailedException(message: String) : RuntimeException(message)
 class DomainValidationException(message: String) : RuntimeException(message)
 
 class MediaNotReadyException(message: String = "Media is not ready.") : RuntimeException(message)
+
+class IdempotencyConflictException(message: String = "Idempotency-Key was reused with a different request body.") : RuntimeException(message)

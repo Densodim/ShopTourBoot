@@ -2,6 +2,7 @@ package com.shoptourr.web
 
 import com.shoptourr.AuthenticationFailedException
 import com.shoptourr.DomainValidationException
+import com.shoptourr.IdempotencyConflictException
 import com.shoptourr.MediaNotReadyException
 import com.shoptourr.ResourceConflictException
 import com.shoptourr.ResourceNotFoundException
@@ -117,6 +118,15 @@ class ApiExceptionHandler : ResponseEntityExceptionHandler() {
 			ApiProblem.MEDIA_NOT_READY,
 			"Media not ready",
 			ex.message ?: "Media is not ready.",
+		)
+
+	@ExceptionHandler(IdempotencyConflictException::class)
+	fun idempotencyConflict(ex: IdempotencyConflictException): ProblemDetail =
+		ApiProblem.of(
+			HttpStatus.CONFLICT,
+			ApiProblem.IDEMPOTENCY_CONFLICT,
+			"Idempotency conflict",
+			ex.message ?: "Idempotency-Key was reused with a different request body.",
 		)
 
 	@ExceptionHandler(ResourceConflictException::class)
