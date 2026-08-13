@@ -9,3 +9,5 @@ class ResourceConflictException(message: String) : RuntimeException(message)
 class ResourceNotFoundException(message: String) : RuntimeException(message)
 
 class AuthenticationFailedException(message: String) : RuntimeException(message)
+
+class DomainValidationException(message: String) : RuntimeException(message)

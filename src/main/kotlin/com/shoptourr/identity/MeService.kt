@@ -11,6 +11,7 @@ import com.shoptourr.identity.dto.UpdateProfileRequest
 import com.shoptourr.identity.dto.UserDto
 import com.shoptourr.identity.dto.UserPreferencesDto
 import com.shoptourr.identity.dto.UserStatsDto
+import com.shoptourr.trip.TripService
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
@@ -22,10 +23,15 @@ class MeService(
 	private val users: AppUserRepository,
 	private val clientProperties: ClientProperties,
 	private val clock: Clock,
+	private val tripService: TripService,
 ) {
 
 	@Transactional(readOnly = true)
-	fun getMe(userId: UUID): UserDto = requireLiveUser(userId).toDto()
+	fun getMe(userId: UUID): UserDto {
+		val user = requireLiveUser(userId)
+		val (tripsCount, countriesCount) = tripService.countsFor(userId)
+		return user.toDto(tripsCount, countriesCount)
+	}
 
 	@Transactional
 	fun updateProfile(userId: UUID, request: UpdateProfileRequest): UserDto {
@@ -33,7 +39,8 @@ class MeService(
 		user.displayName = request.displayName.trim()
 		user.avatarMediaId = request.avatarMediaId
 		user.updatedAt = Instant.now(clock)
-		return user.toDto()
+		val (tripsCount, countriesCount) = tripService.countsFor(userId)
+		return user.toDto(tripsCount, countriesCount)
 	}
 
 	@Transactional(readOnly = true)
@@ -75,7 +82,7 @@ class MeService(
 	}
 }
 
-fun AppUser.toDto(): UserDto =
+fun AppUser.toDto(tripsCount: Int = 0, countriesCount: Int = 0, wishlistCount: Int = 0): UserDto =
 	UserDto(
 		id = id,
 		displayName = displayName,
@@ -87,7 +94,7 @@ fun AppUser.toDto(): UserDto =
 		pushNotificationsEnabled = pushNotificationsEnabled,
 		memberSince = createdAt,
 		premiumPlan = PremiumPlan.valueOf(premiumPlan),
-		stats = UserStatsDto(tripsCount = 0, countriesCount = 0, wishlistCount = 0),
+		stats = UserStatsDto(tripsCount = tripsCount, countriesCount = countriesCount, wishlistCount = wishlistCount),
 	)
 
 fun AppUser.toPreferences(): UserPreferencesDto =

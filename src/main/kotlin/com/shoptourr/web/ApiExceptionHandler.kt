@@ -1,6 +1,7 @@
 package com.shoptourr.web
 
 import com.shoptourr.AuthenticationFailedException
+import com.shoptourr.DomainValidationException
 import com.shoptourr.ResourceConflictException
 import com.shoptourr.ResourceNotFoundException
 import jakarta.validation.ConstraintViolationException
@@ -98,6 +99,15 @@ class ApiExceptionHandler : ResponseEntityExceptionHandler() {
 		)
 		return problem
 	}
+
+	@ExceptionHandler(DomainValidationException::class)
+	fun domainValidation(ex: DomainValidationException): ProblemDetail =
+		ApiProblem.of(
+			HttpStatus.BAD_REQUEST,
+			ApiProblem.VALIDATION_ERROR,
+			"Validation failed",
+			ex.message ?: "Validation failed",
+		)
 
 	@ExceptionHandler(ResourceConflictException::class)
 	fun conflict(ex: ResourceConflictException): ProblemDetail =
