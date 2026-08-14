@@ -43,13 +43,16 @@ class TripServiceTest {
 	@Mock
 	private lateinit var invites: TripInviteRepository
 
+	@Mock
+	private lateinit var fxRates: com.shoptourr.fx.FxRateService
+
 	private val clock = Clock.fixed(Instant.parse("2026-08-13T12:00:00Z"), ZoneOffset.UTC)
 	private lateinit var service: TripService
 	private lateinit var owner: AppUser
 
 	@BeforeEach
 	fun setUp() {
-		service = TripService(trips, users, clock, purchaseRepo, invites)
+		service = TripService(trips, users, clock, purchaseRepo, invites, fxRates)
 		owner = AppUser(
 			email = "ada@example.com",
 			passwordHash = "hash",
@@ -62,6 +65,9 @@ class TripServiceTest {
 		lenient().`when`(trips.save(any(Trip::class.java))).thenAnswer { it.arguments[0] }
 		lenient().`when`(purchaseRepo.sumGrossByTripId(any() ?: UUID.randomUUID())).thenReturn(BigDecimal.ZERO)
 		lenient().`when`(purchaseRepo.countByTripIdAndDeletedAtIsNull(any() ?: UUID.randomUUID())).thenReturn(0)
+		lenient().`when`(fxRates.quote(any() ?: "EUR", any() ?: "RUB")).thenAnswer { invocation ->
+			FxCatalog.quote(invocation.getArgument(0), invocation.getArgument(1))
+		}
 	}
 
 	@Test

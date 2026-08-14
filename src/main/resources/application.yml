@@ -85,6 +85,10 @@ voyage:
     refresh-token-ttl: 30d
   auth:
     reset-token-ttl: 30m
+  fx:
+    enabled: true
+    base-url: ${VOYAGE_FX_BASE_URL:https://open.er-api.com/v6/latest}
+    cache-ttl: 1h
 
 springdoc:
   api-docs:

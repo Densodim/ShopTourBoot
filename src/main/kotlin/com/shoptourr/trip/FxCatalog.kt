@@ -4,8 +4,8 @@ import java.math.BigDecimal
 import java.math.RoundingMode
 
 /**
- * Local stand-in for a live FX feed. Rates are units of [quote] per 1 unit of [trip]
- * currency, derived from a EUR cross table.
+ * Fallback FX table when the live feed is down or missing a pair.
+ * Rates are units of [quote] per 1 unit of [trip] currency, derived from a EUR cross.
  */
 object FxCatalog {
 

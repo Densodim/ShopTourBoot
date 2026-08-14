@@ -3,6 +3,7 @@ package com.shoptourr.trip
 import com.shoptourr.DomainValidationException
 import com.shoptourr.ResourceConflictException
 import com.shoptourr.ResourceNotFoundException
+import com.shoptourr.fx.FxRateService
 import com.shoptourr.identity.AppUser
 import com.shoptourr.identity.AppUserRepository
 import com.shoptourr.purchase.PurchaseRepository
@@ -39,6 +40,7 @@ class TripService(
 	private val clock: Clock,
 	private val purchases: PurchaseRepository,
 	private val invites: TripInviteRepository,
+	private val fxRates: FxRateService,
 ) {
 
 	@Transactional
@@ -242,7 +244,7 @@ class TripService(
 
 	private fun applyFx(trip: Trip, quoteCurrency: String, today: LocalDate) {
 		val quoteCode = quoteCurrency.uppercase()
-		val quote = FxCatalog.quote(trip.budgetCurrency, quoteCode)
+		val quote = fxRates.quote(trip.budgetCurrency, quoteCode)
 		trip.fxTripCurrency = trip.budgetCurrency
 		trip.fxQuoteCurrency = quoteCode
 		trip.fxRate = quote.rate
