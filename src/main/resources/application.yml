@@ -89,6 +89,11 @@ voyage:
     enabled: true
     base-url: ${VOYAGE_FX_BASE_URL:https://open.er-api.com/v6/latest}
     cache-ttl: 1h
+  geo:
+    enabled: true
+    base-url: ${VOYAGE_GEO_BASE_URL:https://nominatim.openstreetmap.org}
+    user-agent: ${VOYAGE_GEO_USER_AGENT:ShopTourr/1.0 (https://github.com/Densodim/ShopTourBoot)}
+    cache-ttl: 7d
 
 springdoc:
   api-docs:

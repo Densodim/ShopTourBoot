@@ -1,5 +1,6 @@
 package com.shoptourr.insights
 
+import com.shoptourr.geo.GeocodeService
 import com.shoptourr.identity.MeService
 import com.shoptourr.insights.dto.AlertSeverity
 import com.shoptourr.insights.dto.AlertType
@@ -36,6 +37,7 @@ class InsightsService(
 	private val meService: MeService,
 	private val tripService: TripService,
 	private val purchases: PurchaseRepository,
+	private val geocode: GeocodeService,
 	private val clock: Clock,
 ) {
 
@@ -158,7 +160,7 @@ class InsightsService(
 			.entries
 			.sortedBy { entry -> entry.value.minOf { it.purchaseDate } }
 			.mapIndexed { index, (place, group) ->
-				val resolved = PlaceCatalog.resolve(place, trip.city, trip.country, trip.countryCode)
+				val resolved = geocode.resolve(place, trip.city, trip.country, trip.countryCode)
 				RouteStopDto(
 					id = UUID.nameUUIDFromBytes("$tripId:$place".toByteArray()),
 					title = place,

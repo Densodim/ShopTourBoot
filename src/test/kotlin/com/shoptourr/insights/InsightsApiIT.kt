@@ -101,6 +101,7 @@ class InsightsApiIT {
 		@DynamicPropertySource
 		fun jwtProps(registry: DynamicPropertyRegistry) {
 			registry.add("voyage.jwt.secret") { "test-only-secret-key-32bytes-min!!" }
+			registry.add("voyage.geo.enabled") { "false" }
 		}
 	}
 }

@@ -4,10 +4,10 @@ import java.math.BigDecimal
 import java.math.RoundingMode
 
 /**
- * Local stand-in for a geocoder. Named places and trip cities are resolved from a static
- * table until a live provider is wired.
+ * Fallback geocoder when Nominatim is down or the query is unknown.
+ * Named places and trip cities resolve from a static table.
  */
-internal object PlaceCatalog {
+object PlaceCatalog {
 
 	data class LatLng(val lat: BigDecimal, val lng: BigDecimal)
 
