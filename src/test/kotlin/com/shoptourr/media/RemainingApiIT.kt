@@ -14,6 +14,8 @@ import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.testcontainers.junit.jupiter.Testcontainers
@@ -48,6 +50,18 @@ class RemainingApiIT {
 				.andReturn().response.contentAsByteArray,
 		)
 		val mediaId = media.get("mediaId").stringValue()
+		val payload = byteArrayOf(1, 2, 3, 4)
+
+		mockMvc.perform(
+			put("/dev-uploads/$mediaId")
+				.contentType(MediaType.IMAGE_JPEG)
+				.content(payload),
+		)
+			.andExpect(status().isNoContent)
+
+		mockMvc.perform(get("/dev-uploads/$mediaId"))
+			.andExpect(status().isOk)
+			.andExpect(content().bytes(payload))
 
 		mockMvc.perform(get("/api/media/$mediaId/ocr").header("Authorization", "Bearer $access"))
 			.andExpect(status().isConflict)

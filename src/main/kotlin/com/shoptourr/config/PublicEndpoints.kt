@@ -15,6 +15,7 @@ object PublicEndpoints {
 		"/api/auth/refresh",
 		"/api/auth/forgot-password",
 		"/api/_ping",
+		"/dev-uploads/**",
 	)
 
 	/** Documentation endpoints. Switched off entirely in prod — see `application-prod.yml`. */

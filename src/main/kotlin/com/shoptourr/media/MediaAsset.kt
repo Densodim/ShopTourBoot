@@ -26,10 +26,13 @@ class MediaAsset(
 	val contentType: String,
 
 	@Column(name = "byte_size", nullable = false)
-	val byteSize: Long,
+	var byteSize: Long,
 
 	@Column(name = "sha256_hex", length = 64)
 	val sha256Hex: String? = null,
+
+	@Column(name = "content", columnDefinition = "bytea")
+	var content: ByteArray? = null,
 
 	@Column(name = "created_at", nullable = false)
 	val createdAt: Instant,
