@@ -241,11 +241,13 @@ class TripService(
 	}
 
 	private fun applyFx(trip: Trip, quoteCurrency: String, today: LocalDate) {
+		val quoteCode = quoteCurrency.uppercase()
+		val quote = FxCatalog.quote(trip.budgetCurrency, quoteCode)
 		trip.fxTripCurrency = trip.budgetCurrency
-		trip.fxQuoteCurrency = quoteCurrency
-		trip.fxRate = BigDecimal.ONE
+		trip.fxQuoteCurrency = quoteCode
+		trip.fxRate = quote.rate
 		trip.fxRateDate = today
-		trip.fxProvider = if (quoteCurrency == trip.budgetCurrency) "identity" else "stub"
+		trip.fxProvider = quote.provider
 	}
 
 	private fun toDto(trip: Trip, today: LocalDate): TripDto {

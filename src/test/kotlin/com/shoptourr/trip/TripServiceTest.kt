@@ -77,6 +77,11 @@ class TripServiceTest {
 		assertTrue(result.travelers.single().isOwner)
 		assertEquals("Ada", result.travelers.single().name)
 		assertEquals(0, result.spent.amount.compareTo(BigDecimal.ZERO))
+		val fx = requireNotNull(result.exchangeRate)
+		assertEquals("EUR", fx.tripCurrency)
+		assertEquals("RUB", fx.quoteCurrency)
+		assertEquals("catalog", fx.provider)
+		assertEquals(0, fx.rate.compareTo(BigDecimal("95.000000")))
 	}
 
 	@Test
