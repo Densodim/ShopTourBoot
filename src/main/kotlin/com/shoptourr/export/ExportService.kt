@@ -63,7 +63,7 @@ class ExportService(
 		if (job.expiresAt?.let { !it.isAfter(now) } == true) {
 			throw ResourceNotFoundException("Export not found.")
 		}
-		tripService.requireOwned(job.ownerId, job.tripId)
+		val trip = tripService.requireOwned(job.ownerId, job.tripId)
 		val purchaseRows = purchases
 			.findAllByTripIdAndDeletedAtIsNullOrderByPurchaseDateDescPurchaseTimeDesc(job.tripId)
 			.map { purchase ->
@@ -88,12 +88,20 @@ class ExportService(
 		} else {
 			null
 		}
-		val bytes = ExportCsv.render(purchaseRows, diaryRows).toByteArray(Charsets.UTF_8)
-		return StoredExport(
-			filename = "export-${job.id}.csv",
-			contentType = "text/csv; charset=UTF-8",
-			bytes = bytes,
-		)
+		val csv = ExportCsv.render(purchaseRows, diaryRows)
+		val title = "${trip.city}, ${trip.country}"
+		return when (ExportFormat.valueOf(job.format)) {
+			ExportFormat.CSV -> StoredExport(
+				filename = "export-${job.id}.csv",
+				contentType = "text/csv; charset=UTF-8",
+				bytes = csv.toByteArray(Charsets.UTF_8),
+			)
+			ExportFormat.PDF -> StoredExport(
+				filename = "export-${job.id}.pdf",
+				contentType = "application/pdf",
+				bytes = ExportPdf.render(title, csv),
+			)
+		}
 	}
 
 	private fun publicBaseUrl(): String {
