@@ -11,6 +11,7 @@ import com.shoptourr.purchase.dto.TripPurchasesResponse
 import com.shoptourr.purchase.dto.UpdatePurchaseRequest
 import com.shoptourr.shared.dto.MoneyDto
 import com.shoptourr.shared.dto.VatBreakdownDto
+import com.shoptourr.media.MediaService
 import com.shoptourr.trip.Trip
 import com.shoptourr.trip.TripService
 import org.springframework.stereotype.Service
@@ -27,6 +28,7 @@ import java.util.UUID
 class PurchaseService(
 	private val purchases: PurchaseRepository,
 	private val tripService: TripService,
+	private val mediaService: MediaService,
 	private val clock: Clock,
 ) {
 
@@ -188,7 +190,7 @@ class PurchaseService(
 			purchaseDate = purchase.purchaseDate,
 			purchaseTime = purchase.purchaseTime,
 			receiptMediaId = purchase.receiptMediaId,
-			receiptThumbnailUrl = null,
+			receiptThumbnailUrl = purchase.receiptMediaId?.let { mediaService.publicUrlIfReady(trip.ownerId, it) },
 			splitWithTravelerIds = splitIds,
 			splits = splits,
 			yourShare = MoneyDto(shareAmount, purchase.currency),

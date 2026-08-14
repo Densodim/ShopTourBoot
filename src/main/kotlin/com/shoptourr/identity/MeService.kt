@@ -12,6 +12,7 @@ import com.shoptourr.identity.dto.UpdateProfileRequest
 import com.shoptourr.identity.dto.UserDto
 import com.shoptourr.identity.dto.UserPreferencesDto
 import com.shoptourr.identity.dto.UserStatsDto
+import com.shoptourr.media.MediaService
 import com.shoptourr.trip.TripService
 import com.shoptourr.wishlist.WishlistService
 import org.springframework.stereotype.Service
@@ -27,14 +28,11 @@ class MeService(
 	private val clock: Clock,
 	private val tripService: TripService,
 	private val wishlistService: WishlistService,
+	private val mediaService: MediaService,
 ) {
 
 	@Transactional(readOnly = true)
-	fun getMe(userId: UUID): UserDto {
-		val user = requireLiveUser(userId)
-		val (tripsCount, countriesCount) = tripService.countsFor(userId)
-		return user.toDto(tripsCount, countriesCount, wishlistService.countFor(userId))
-	}
+	fun getMe(userId: UUID): UserDto = profile(requireLiveUser(userId))
 
 	@Transactional
 	fun updateProfile(userId: UUID, request: UpdateProfileRequest): UserDto {
@@ -42,8 +40,7 @@ class MeService(
 		user.displayName = request.displayName.trim()
 		user.avatarMediaId = request.avatarMediaId
 		user.updatedAt = Instant.now(clock)
-		val (tripsCount, countriesCount) = tripService.countsFor(userId)
-		return user.toDto(tripsCount, countriesCount, wishlistService.countFor(userId))
+		return profile(user)
 	}
 
 	@Transactional
@@ -51,8 +48,7 @@ class MeService(
 		val user = requireLiveUser(userId)
 		user.premiumPlan = request.plan.name
 		user.updatedAt = Instant.now(clock)
-		val (tripsCount, countriesCount) = tripService.countsFor(userId)
-		return user.toDto(tripsCount, countriesCount, wishlistService.countFor(userId))
+		return profile(user)
 	}
 
 	@Transactional(readOnly = true)
@@ -85,6 +81,16 @@ class MeService(
 			storeUrlIos = clientProperties.storeUrlIos,
 		)
 
+	private fun profile(user: AppUser): UserDto {
+		val (tripsCount, countriesCount) = tripService.countsFor(user.id)
+		return user.toDto(
+			tripsCount,
+			countriesCount,
+			wishlistService.countFor(user.id),
+			user.avatarMediaId?.let { mediaService.publicUrlIfReady(user.id, it) },
+		)
+	}
+
 	private fun requireLiveUser(userId: UUID): AppUser {
 		val user = users.findById(userId).orElse(null)
 		if (user == null || user.deletedAt != null) {
@@ -94,12 +100,17 @@ class MeService(
 	}
 }
 
-fun AppUser.toDto(tripsCount: Int = 0, countriesCount: Int = 0, wishlistCount: Int = 0): UserDto =
+fun AppUser.toDto(
+	tripsCount: Int = 0,
+	countriesCount: Int = 0,
+	wishlistCount: Int = 0,
+	avatarUrl: String? = null,
+): UserDto =
 	UserDto(
 		id = id,
 		displayName = displayName,
 		email = email,
-		avatarUrl = null,
+		avatarUrl = avatarUrl,
 		locale = locale,
 		preferredCurrency = preferredCurrency,
 		theme = ThemePreference.valueOf(theme),

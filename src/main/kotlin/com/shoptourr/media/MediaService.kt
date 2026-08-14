@@ -102,6 +102,15 @@ class MediaService(
 	fun get(userId: UUID, mediaId: UUID): MediaAssetDto = toDto(requireOwned(userId, mediaId))
 
 	@Transactional(readOnly = true)
+	fun publicUrlIfReady(userId: UUID, mediaId: UUID): String? {
+		val asset = assets.findByIdAndDeletedAtIsNull(mediaId) ?: return null
+		if (asset.userId != userId || asset.status != MediaStatus.READY.name) {
+			return null
+		}
+		return "${publicBaseUrl()}/dev-uploads/${asset.id}"
+	}
+
+	@Transactional(readOnly = true)
 	fun ocr(userId: UUID, mediaId: UUID): ReceiptOcrResultDto {
 		val asset = requireOwned(userId, mediaId)
 		if (asset.status != MediaStatus.READY.name) {

@@ -16,6 +16,7 @@ import org.mockito.Mock
 import org.mockito.Mockito.lenient
 import org.mockito.Mockito.`when`
 import org.mockito.junit.jupiter.MockitoExtension
+import com.shoptourr.media.MediaService
 import com.shoptourr.trip.TripService
 import com.shoptourr.wishlist.WishlistService
 import java.time.Clock
@@ -36,13 +37,16 @@ class MeServiceTest {
 	@Mock
 	private lateinit var wishlistService: WishlistService
 
+	@Mock
+	private lateinit var mediaService: MediaService
+
 	private val clock = Clock.fixed(Instant.parse("2026-08-13T12:00:00Z"), ZoneOffset.UTC)
 	private lateinit var service: MeService
 	private lateinit var user: AppUser
 
 	@BeforeEach
 	fun setUp() {
-		service = MeService(users, ClientProperties(minAndroidBuild = 12, minIosBuild = 34), clock, tripService, wishlistService)
+		service = MeService(users, ClientProperties(minAndroidBuild = 12, minIosBuild = 34), clock, tripService, wishlistService, mediaService)
 		user = AppUser(
 			email = "ada@example.com",
 			passwordHash = "hash",
@@ -68,6 +72,18 @@ class MeServiceTest {
 		assertNull(dto.avatarUrl)
 		assertEquals(0, dto.stats.tripsCount)
 		assertEquals(user.createdAt, dto.memberSince)
+	}
+
+	@Test
+	fun `getMe includes avatarUrl when the media is ready`() {
+		val mediaId = UUID.fromString("33333333-3333-3333-3333-333333333333")
+		user.avatarMediaId = mediaId
+		`when`(mediaService.publicUrlIfReady(user.id, mediaId))
+			.thenReturn("http://localhost:8080/dev-uploads/$mediaId")
+
+		val dto = service.getMe(user.id)
+
+		assertEquals("http://localhost:8080/dev-uploads/$mediaId", dto.avatarUrl)
 	}
 
 	@Test

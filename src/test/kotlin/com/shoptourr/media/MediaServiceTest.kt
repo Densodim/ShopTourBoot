@@ -90,6 +90,22 @@ class MediaServiceTest {
 		}
 	}
 
+	@Test
+	fun `publicUrlIfReady is null until the asset is ready`() {
+		val pending = asset(status = MediaStatus.PENDING_UPLOAD.name)
+		`when`(assets.findByIdAndDeletedAtIsNull(pending.id)).thenReturn(pending)
+
+		assertEquals(null, service.publicUrlIfReady(userId, pending.id))
+	}
+
+	@Test
+	fun `publicUrlIfReady returns the download path for a ready asset`() {
+		val ready = asset(status = MediaStatus.READY.name, content = byteArrayOf(1))
+		`when`(assets.findByIdAndDeletedAtIsNull(ready.id)).thenReturn(ready)
+
+		assertEquals("http://localhost:8080/dev-uploads/${ready.id}", service.publicUrlIfReady(userId, ready.id))
+	}
+
 	private fun asset(
 		status: String,
 		content: ByteArray? = null,

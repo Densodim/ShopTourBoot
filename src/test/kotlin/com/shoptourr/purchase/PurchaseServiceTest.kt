@@ -2,6 +2,7 @@ package com.shoptourr.purchase
 
 import com.shoptourr.purchase.dto.CreatePurchaseRequest
 import com.shoptourr.purchase.dto.PurchaseCategory
+import com.shoptourr.media.MediaService
 import com.shoptourr.shared.dto.MoneyDto
 import com.shoptourr.trip.Traveler
 import com.shoptourr.trip.Trip
@@ -32,6 +33,9 @@ class PurchaseServiceTest {
 	@Mock
 	private lateinit var tripService: TripService
 
+	@Mock
+	private lateinit var mediaService: MediaService
+
 	private val clock = Clock.fixed(Instant.parse("2026-08-13T12:00:00Z"), ZoneOffset.UTC)
 	private lateinit var service: PurchaseService
 	private lateinit var trip: Trip
@@ -39,7 +43,7 @@ class PurchaseServiceTest {
 
 	@BeforeEach
 	fun setUp() {
-		service = PurchaseService(purchases, tripService, clock)
+		service = PurchaseService(purchases, tripService, mediaService, clock)
 		trip = Trip(
 			ownerId = ownerId,
 			city = "Lisbon",
@@ -115,5 +119,35 @@ class PurchaseServiceTest {
 		assertEquals(BigDecimal("4.50"), list.spentTotal.amount)
 		assertEquals(1, list.days.size)
 		assertEquals("today", list.days.single().labelKey)
+	}
+
+	@Test
+	fun `list includes receipt thumbnail when media is ready`() {
+		val mediaId = UUID.fromString("33333333-3333-3333-3333-333333333333")
+		val item = Purchase(
+			tripId = trip.id,
+			name = "Coffee",
+			category = "FOOD",
+			grossAmount = BigDecimal("4.50"),
+			currency = "EUR",
+			netAmount = BigDecimal("3.66"),
+			vatAmount = BigDecimal("0.84"),
+			vatRatePercent = BigDecimal("23"),
+			vatIncluded = true,
+			purchaseDate = LocalDate.of(2026, 8, 13),
+			purchaseTime = java.time.LocalTime.of(10, 0),
+			receiptMediaId = mediaId,
+			createdAt = Instant.now(clock),
+			updatedAt = Instant.now(clock),
+		)
+		item.splitTravelerIds.add(trip.travelers.first().id)
+		`when`(purchases.findAllByTripIdAndDeletedAtIsNullOrderByPurchaseDateDescPurchaseTimeDesc(trip.id))
+			.thenReturn(listOf(item))
+		`when`(mediaService.publicUrlIfReady(ownerId, mediaId))
+			.thenReturn("http://localhost:8080/dev-uploads/$mediaId")
+
+		val list = service.list(ownerId, trip.id)
+
+		assertEquals("http://localhost:8080/dev-uploads/$mediaId", list.days.single().items.single().receiptThumbnailUrl)
 	}
 }
