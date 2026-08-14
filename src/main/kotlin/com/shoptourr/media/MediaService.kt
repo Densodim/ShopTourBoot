@@ -14,6 +14,7 @@ import com.shoptourr.media.dto.ReceiptOcrResultDto
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder
+import java.security.MessageDigest
 import java.time.Clock
 import java.time.Instant
 import java.util.UUID
@@ -56,11 +57,19 @@ class MediaService(
 	fun storeBytes(mediaId: UUID, body: ByteArray) {
 		val asset = assets.findByIdAndDeletedAtIsNull(mediaId)
 			?: throw ResourceNotFoundException("Media not found.")
+		if (asset.status == MediaStatus.READY.name) {
+			throw DomainValidationException("Media is already confirmed.")
+		}
 		if (body.isEmpty()) {
 			throw DomainValidationException("Empty upload.")
 		}
 		if (body.size > MAX_BYTES) {
 			throw DomainValidationException("File exceeds 12MB limit.")
+		}
+		asset.sha256Hex?.let { expected ->
+			if (!expected.equals(sha256Hex(body), ignoreCase = true)) {
+				throw DomainValidationException("Upload hash does not match sha256Hex.")
+			}
 		}
 		asset.content = body
 		asset.byteSize = body.size.toLong()
@@ -80,6 +89,9 @@ class MediaService(
 	fun confirm(userId: UUID, mediaId: UUID, request: ConfirmMediaUploadRequest): MediaAssetDto {
 		val asset = requireOwned(userId, mediaId)
 		if (request.uploaded) {
+			if (asset.content == null) {
+				throw MediaNotReadyException()
+			}
 			asset.status = MediaStatus.READY.name
 			asset.updatedAt = Instant.now(clock)
 		}
@@ -140,6 +152,9 @@ class MediaService(
 			mediaProperties.publicBaseUrl.trimEnd('/')
 		}
 	}
+
+	private fun sha256Hex(body: ByteArray): String =
+		MessageDigest.getInstance("SHA-256").digest(body).joinToString("") { byte -> "%02x".format(byte) }
 
 	companion object {
 		const val MAX_BYTES = 12L * 1024 * 1024

@@ -1,0 +1,111 @@
+package com.shoptourr.media
+
+import com.shoptourr.DomainValidationException
+import com.shoptourr.MediaNotReadyException
+import com.shoptourr.config.MediaProperties
+import com.shoptourr.media.dto.ConfirmMediaUploadRequest
+import com.shoptourr.media.dto.MediaPurpose
+import com.shoptourr.media.dto.MediaStatus
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
+import org.junit.jupiter.api.extension.ExtendWith
+import org.mockito.Mock
+import org.mockito.Mockito.`when`
+import org.mockito.junit.jupiter.MockitoExtension
+import java.security.MessageDigest
+import java.time.Clock
+import java.time.Instant
+import java.time.ZoneOffset
+import java.util.UUID
+
+@ExtendWith(MockitoExtension::class)
+class MediaServiceTest {
+
+	@Mock
+	private lateinit var assets: MediaAssetRepository
+
+	private val clock = Clock.fixed(Instant.parse("2026-08-13T12:00:00Z"), ZoneOffset.UTC)
+	private lateinit var service: MediaService
+	private val userId = UUID.fromString("11111111-1111-1111-1111-111111111111")
+
+	@BeforeEach
+	fun setUp() {
+		service = MediaService(assets, MediaProperties(), clock)
+	}
+
+	@Test
+	fun `confirm without stored bytes is not ready`() {
+		val asset = asset(status = MediaStatus.PENDING_UPLOAD.name, content = null)
+		`when`(assets.findByIdAndDeletedAtIsNull(asset.id)).thenReturn(asset)
+
+		assertThrows<MediaNotReadyException> {
+			service.confirm(userId, asset.id, ConfirmMediaUploadRequest(uploaded = true))
+		}
+	}
+
+	@Test
+	fun `confirm after upload marks the asset ready`() {
+		val payload = byteArrayOf(1, 2, 3, 4)
+		val asset = asset(status = MediaStatus.UPLOADED.name, content = payload)
+		`when`(assets.findByIdAndDeletedAtIsNull(asset.id)).thenReturn(asset)
+
+		val dto = service.confirm(userId, asset.id, ConfirmMediaUploadRequest(uploaded = true))
+
+		assertEquals(MediaStatus.READY, dto.status)
+		assertEquals(MediaStatus.READY.name, asset.status)
+	}
+
+	@Test
+	fun `storeBytes rejects a sha256 mismatch`() {
+		val payload = byteArrayOf(1, 2, 3, 4)
+		val asset = asset(status = MediaStatus.PENDING_UPLOAD.name, sha256Hex = "0".repeat(64))
+		`when`(assets.findByIdAndDeletedAtIsNull(asset.id)).thenReturn(asset)
+
+		assertThrows<DomainValidationException> {
+			service.storeBytes(asset.id, payload)
+		}
+	}
+
+	@Test
+	fun `storeBytes accepts a matching sha256`() {
+		val payload = byteArrayOf(1, 2, 3, 4)
+		val asset = asset(status = MediaStatus.PENDING_UPLOAD.name, sha256Hex = sha256Hex(payload))
+		`when`(assets.findByIdAndDeletedAtIsNull(asset.id)).thenReturn(asset)
+
+		service.storeBytes(asset.id, payload)
+
+		assertEquals(MediaStatus.UPLOADED.name, asset.status)
+		assertEquals(payload.size.toLong(), asset.byteSize)
+	}
+
+	@Test
+	fun `storeBytes rejects a confirmed asset`() {
+		val asset = asset(status = MediaStatus.READY.name, content = byteArrayOf(1))
+		`when`(assets.findByIdAndDeletedAtIsNull(asset.id)).thenReturn(asset)
+
+		assertThrows<DomainValidationException> {
+			service.storeBytes(asset.id, byteArrayOf(9, 8, 7))
+		}
+	}
+
+	private fun asset(
+		status: String,
+		content: ByteArray? = null,
+		sha256Hex: String? = null,
+	) = MediaAsset(
+		userId = userId,
+		purpose = MediaPurpose.RECEIPT.name,
+		status = status,
+		contentType = "image/jpeg",
+		byteSize = content?.size?.toLong() ?: 4,
+		sha256Hex = sha256Hex,
+		content = content,
+		createdAt = Instant.now(clock),
+		updatedAt = Instant.now(clock),
+	)
+
+	private fun sha256Hex(body: ByteArray): String =
+		MessageDigest.getInstance("SHA-256").digest(body).joinToString("") { byte -> "%02x".format(byte) }
+}
