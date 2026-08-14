@@ -116,18 +116,8 @@ class MediaService(
 		if (asset.status != MediaStatus.READY.name) {
 			throw MediaNotReadyException()
 		}
-		return if (asset.purpose == MediaPurpose.RECEIPT.name) {
-			ReceiptOcrResultDto(
-				mediaId = asset.id,
-				suggestedName = "Receipt",
-				suggestedAmount = "0.00",
-				suggestedPlace = null,
-				suggestedCategory = "OTHER",
-				confidence = 0.1,
-			)
-		} else {
-			ReceiptOcrResultDto(asset.id, null, null, null, null, 0.0)
-		}
+		val bytes = asset.content ?: throw MediaNotReadyException()
+		return ReceiptOcr.parse(asset.id, asset.purpose, asset.contentType, bytes)
 	}
 
 	private fun requireOwned(userId: UUID, mediaId: UUID): MediaAsset {

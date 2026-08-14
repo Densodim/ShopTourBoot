@@ -106,15 +106,29 @@ class MediaServiceTest {
 		assertEquals("http://localhost:8080/dev-uploads/${ready.id}", service.publicUrlIfReady(userId, ready.id))
 	}
 
+	@Test
+	fun `ocr reads structured bytes from a ready receipt`() {
+		val body = "name: Pastel\namount: 1.20\ncategory: FOOD".toByteArray()
+		val asset = asset(status = MediaStatus.READY.name, content = body, contentType = "text/plain")
+		`when`(assets.findByIdAndDeletedAtIsNull(asset.id)).thenReturn(asset)
+
+		val result = service.ocr(userId, asset.id)
+
+		assertEquals("Pastel", result.suggestedName)
+		assertEquals("1.20", result.suggestedAmount)
+		assertEquals("FOOD", result.suggestedCategory)
+	}
+
 	private fun asset(
 		status: String,
 		content: ByteArray? = null,
 		sha256Hex: String? = null,
+		contentType: String = "image/jpeg",
 	) = MediaAsset(
 		userId = userId,
 		purpose = MediaPurpose.RECEIPT.name,
 		status = status,
-		contentType = "image/jpeg",
+		contentType = contentType,
 		byteSize = content?.size?.toLong() ?: 4,
 		sha256Hex = sha256Hex,
 		content = content,
