@@ -33,6 +33,9 @@ dependencies {
 	implementation("org.jetbrains.kotlin:kotlin-reflect")
 	implementation("tools.jackson.module:jackson-module-kotlin")
 	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.0")
+	implementation(platform("software.amazon.awssdk:bom:2.32.26"))
+	implementation("software.amazon.awssdk:s3")
+	implementation("software.amazon.awssdk:url-connection-client")
 
 	runtimeOnly("org.postgresql:postgresql")
 

@@ -13,8 +13,9 @@ import org.springframework.web.bind.annotation.RestController
 import java.util.UUID
 
 /**
- * Local stand-in for a pre-signed object-storage PUT/GET.
- * The KMP client uploads to [MediaUploadIntentResponse.uploadUrl] without a Bearer token.
+ * Public PUT/GET for media bytes. The KMP client uploads to [MediaUploadIntentResponse.uploadUrl]
+ * without a Bearer token. The service stores the body in object storage (local disk or S3),
+ * not in Postgres.
  */
 @RestController
 @RequestMapping("/dev-uploads")

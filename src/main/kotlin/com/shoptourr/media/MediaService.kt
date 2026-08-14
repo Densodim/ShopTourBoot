@@ -22,6 +22,7 @@ import java.util.UUID
 @Service
 class MediaService(
 	private val assets: MediaAssetRepository,
+	private val blobs: MediaBlobStore,
 	private val mediaProperties: MediaProperties,
 	private val clock: Clock,
 ) {
@@ -71,7 +72,10 @@ class MediaService(
 				throw DomainValidationException("Upload hash does not match sha256Hex.")
 			}
 		}
-		asset.content = body
+		val key = keyFor(asset)
+		blobs.put(key, asset.contentType, body)
+		asset.storageKey = key
+		asset.content = null
 		asset.byteSize = body.size.toLong()
 		asset.status = MediaStatus.UPLOADED.name
 		asset.updatedAt = Instant.now(clock)
@@ -81,7 +85,7 @@ class MediaService(
 	fun loadBytes(mediaId: UUID): StoredMedia {
 		val asset = assets.findByIdAndDeletedAtIsNull(mediaId)
 			?: throw ResourceNotFoundException("Media not found.")
-		val bytes = asset.content ?: throw MediaNotReadyException()
+		val bytes = loadPayload(asset) ?: throw MediaNotReadyException()
 		return StoredMedia(asset.contentType, bytes)
 	}
 
@@ -89,7 +93,7 @@ class MediaService(
 	fun confirm(userId: UUID, mediaId: UUID, request: ConfirmMediaUploadRequest): MediaAssetDto {
 		val asset = requireOwned(userId, mediaId)
 		if (request.uploaded) {
-			if (asset.content == null) {
+			if (!hasPayload(asset)) {
 				throw MediaNotReadyException()
 			}
 			asset.status = MediaStatus.READY.name
@@ -116,8 +120,24 @@ class MediaService(
 		if (asset.status != MediaStatus.READY.name) {
 			throw MediaNotReadyException()
 		}
-		val bytes = asset.content ?: throw MediaNotReadyException()
+		val bytes = loadPayload(asset) ?: throw MediaNotReadyException()
 		return ReceiptOcr.parse(asset.id, asset.purpose, asset.contentType, bytes)
+	}
+
+	private fun hasPayload(asset: MediaAsset): Boolean {
+		val key = asset.storageKey
+		if (key != null && blobs.exists(key)) {
+			return true
+		}
+		return asset.content != null
+	}
+
+	private fun loadPayload(asset: MediaAsset): ByteArray? {
+		val key = asset.storageKey
+		if (key != null) {
+			blobs.get(key)?.let { return it }
+		}
+		return asset.content
 	}
 
 	private fun requireOwned(userId: UUID, mediaId: UUID): MediaAsset {
@@ -157,6 +177,8 @@ class MediaService(
 
 	companion object {
 		const val MAX_BYTES = 12L * 1024 * 1024
+
+		fun keyFor(asset: MediaAsset): String = "media/${asset.userId}/${asset.id}"
 	}
 }
 

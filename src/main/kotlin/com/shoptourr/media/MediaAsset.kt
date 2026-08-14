@@ -34,6 +34,9 @@ class MediaAsset(
 	@Column(name = "content", columnDefinition = "bytea")
 	var content: ByteArray? = null,
 
+	@Column(name = "storage_key", length = 512)
+	var storageKey: String? = null,
+
 	@Column(name = "created_at", nullable = false)
 	val createdAt: Instant,
 
