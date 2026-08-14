@@ -3,6 +3,7 @@ package com.shoptourr.media
 import com.shoptourr.DomainValidationException
 import com.shoptourr.MediaNotReadyException
 import com.shoptourr.config.MediaProperties
+import com.shoptourr.config.OcrProperties
 import com.shoptourr.media.dto.ConfirmMediaUploadRequest
 import com.shoptourr.media.dto.MediaPurpose
 import com.shoptourr.media.dto.MediaStatus
@@ -36,7 +37,12 @@ class MediaServiceTest {
 	@BeforeEach
 	fun setUp() {
 		blobs = InMemoryMediaBlobStore()
-		service = MediaService(assets, blobs, MediaProperties(), clock)
+		val ocr = OcrService(
+			org.mockito.Mockito.mock(LiveOcrClient::class.java),
+			org.mockito.Mockito.mock(org.springframework.data.redis.core.StringRedisTemplate::class.java),
+			OcrProperties(enabled = false),
+		)
+		service = MediaService(assets, blobs, ocr, MediaProperties(), clock)
 	}
 
 	@Test

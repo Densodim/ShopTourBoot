@@ -175,6 +175,7 @@ class RemainingApiIT {
 		@DynamicPropertySource
 		fun jwtProps(registry: DynamicPropertyRegistry) {
 			registry.add("voyage.jwt.secret") { "test-only-secret-key-32bytes-min!!" }
+			registry.add("voyage.ocr.enabled") { "false" }
 		}
 	}
 }

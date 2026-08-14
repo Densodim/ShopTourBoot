@@ -7,8 +7,9 @@ import java.math.RoundingMode
 import java.util.UUID
 
 /**
- * Local stand-in for a receipt OCR provider. Structured UTF-8 `key: value` bodies are parsed;
- * image bytes keep a low-confidence placeholder until a real engine is wired.
+ * Local receipt parser. Structured UTF-8 `key: value` bodies are parsed directly;
+ * free-form OCR text is reduced to name / amount / place / category. Image bytes
+ * without a live hit stay a low-confidence placeholder.
  */
 internal object ReceiptOcr {
 
@@ -24,6 +25,24 @@ internal object ReceiptOcr {
 			suggestedPlace = fields["place"]?.takeIf { it.isNotBlank() },
 			suggestedCategory = categoryOf(fields["category"]),
 			confidence = 0.85,
+		)
+	}
+
+	fun parseOcrText(mediaId: UUID, text: String): ReceiptOcrResultDto {
+		val lines = text.lineSequence().map { it.trim() }.filter { it.isNotEmpty() }.toList()
+		val amount = findAmount(lines)
+		val name = lines.firstOrNull { looksLikeMerchant(it) }?.take(80) ?: "Receipt"
+		val place = lines.asSequence()
+			.drop(1)
+			.firstOrNull { looksLikeMerchant(it) && it != name }
+			?.take(80)
+		return ReceiptOcrResultDto(
+			mediaId = mediaId,
+			suggestedName = name,
+			suggestedAmount = amount ?: "0.00",
+			suggestedPlace = place,
+			suggestedCategory = inferCategory(text),
+			confidence = if (amount != null) 0.7 else 0.45,
 		)
 	}
 
@@ -51,6 +70,38 @@ internal object ReceiptOcr {
 		return sample.contains(':') || sample.contains('=')
 	}
 
+	private fun findAmount(lines: List<String>): String? {
+		val fromTotal = lines.filter { TOTAL.containsMatchIn(it) }
+			.mapNotNull { line -> MONEY.findAll(line).lastOrNull()?.groupValues?.get(1) }
+			.mapNotNull { normalizeAmount(it) }
+			.lastOrNull()
+		if (fromTotal != null) {
+			return fromTotal
+		}
+		return lines.flatMap { line -> MONEY.findAll(line).map { it.groupValues[1] } }
+			.mapNotNull { normalizeAmount(it) }
+			.maxByOrNull { it.toBigDecimal() }
+	}
+
+	private fun looksLikeMerchant(line: String): Boolean {
+		if (line.length < 3 || SKIP_LINE.containsMatchIn(line)) {
+			return false
+		}
+		return line.any { it.isLetter() }
+	}
+
+	private fun inferCategory(text: String): String {
+		val lower = text.lowercase()
+		return when {
+			FOOD_HINTS.any { it in lower } -> PurchaseCategory.FOOD.name
+			TRANSPORT_HINTS.any { it in lower } -> PurchaseCategory.TRANSPORT.name
+			HOTEL_HINTS.any { it in lower } -> PurchaseCategory.HOTEL.name
+			CULTURE_HINTS.any { it in lower } -> PurchaseCategory.CULTURE.name
+			SOUVENIR_HINTS.any { it in lower } -> PurchaseCategory.SOUVENIRS.name
+			else -> PurchaseCategory.OTHER.name
+		}
+	}
+
 	private fun normalizeAmount(raw: String?): String? {
 		if (raw.isNullOrBlank()) {
 			return null
@@ -75,4 +126,12 @@ internal object ReceiptOcr {
 	)
 
 	private val FIELD = Regex("^([A-Za-z][A-Za-z0-9_]*)\\s*[:=]\\s*(.+)$")
+	private val MONEY = Regex("""(?:[€$£]\s*)?(\d{1,5}(?:[.,]\d{2}))(?:\s*(?:€|eur|usd|gbp|\$))?""", RegexOption.IGNORE_CASE)
+	private val TOTAL = Regex("""total|summe|suma|montant|amount|to pay|visa|mastercard""", RegexOption.IGNORE_CASE)
+	private val SKIP_LINE = Regex("""^(total|sum|subtotal|vat|tax|cash|card|change)\b""", RegexOption.IGNORE_CASE)
+	private val FOOD_HINTS = listOf("restaurant", "cafe", "coffee", "bakery", "market", "grocery", "pizza", "lunch", "dinner")
+	private val TRANSPORT_HINTS = listOf("uber", "taxi", "metro", "train", "bus", "flight", "airline")
+	private val HOTEL_HINTS = listOf("hotel", "hostel", "airbnb")
+	private val CULTURE_HINTS = listOf("museum", "theatre", "theater", "ticket", "gallery")
+	private val SOUVENIR_HINTS = listOf("souvenir", "gift shop", "zara", "uniqlo")
 }

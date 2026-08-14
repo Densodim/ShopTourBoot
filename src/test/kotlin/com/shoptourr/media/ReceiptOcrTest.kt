@@ -39,6 +39,25 @@ class ReceiptOcrTest {
 	}
 
 	@Test
+	fun `ocr text yields merchant total and category`() {
+		val result = ReceiptOcr.parseOcrText(
+			mediaId,
+			"""
+			Time Out Market
+			Lisbon
+			VAT 23%
+			Total €12,50
+			""".trimIndent(),
+		)
+
+		assertEquals("Time Out Market", result.suggestedName)
+		assertEquals("12.50", result.suggestedAmount)
+		assertEquals("Lisbon", result.suggestedPlace)
+		assertEquals("FOOD", result.suggestedCategory)
+		assertEquals(0.7, result.confidence)
+	}
+
+	@Test
 	fun `non-receipt purpose has no suggestions`() {
 		val result = ReceiptOcr.parse(mediaId, "AVATAR", "text/plain", "name: X".toByteArray())
 

@@ -23,6 +23,7 @@ import java.util.UUID
 class MediaService(
 	private val assets: MediaAssetRepository,
 	private val blobs: MediaBlobStore,
+	private val ocr: OcrService,
 	private val mediaProperties: MediaProperties,
 	private val clock: Clock,
 ) {
@@ -121,7 +122,7 @@ class MediaService(
 			throw MediaNotReadyException()
 		}
 		val bytes = loadPayload(asset) ?: throw MediaNotReadyException()
-		return ReceiptOcr.parse(asset.id, asset.purpose, asset.contentType, bytes)
+		return ocr.read(asset.id, asset.purpose, asset.contentType, bytes)
 	}
 
 	private fun hasPayload(asset: MediaAsset): Boolean {

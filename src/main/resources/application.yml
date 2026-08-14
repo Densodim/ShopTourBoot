@@ -73,6 +73,11 @@ voyage:
     secret-key: ${VOYAGE_S3_SECRET_KEY:}
     path-style: true
     local-dir: ${VOYAGE_S3_LOCAL_DIR:}
+  ocr:
+    enabled: ${VOYAGE_OCR_ENABLED:true}
+    base-url: ${VOYAGE_OCR_BASE_URL:https://api.ocr.space}
+    api-key: ${VOYAGE_OCR_API_KEY:}
+    cache-ttl: 7d
   export:
     public-base-url: ${VOYAGE_PUBLIC_BASE_URL:http://localhost:8080}
     download-ttl: 24h
