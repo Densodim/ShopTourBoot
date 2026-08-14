@@ -158,17 +158,27 @@ class InsightsService(
 			.entries
 			.sortedBy { entry -> entry.value.minOf { it.purchaseDate } }
 			.mapIndexed { index, (place, group) ->
+				val resolved = PlaceCatalog.resolve(place, trip.city, trip.country, trip.countryCode)
 				RouteStopDto(
 					id = UUID.nameUUIDFromBytes("$tripId:$place".toByteArray()),
 					title = place,
 					place = place,
 					date = group.minOf { it.purchaseDate },
 					amountSpentHere = MoneyDto(sum(group), trip.budgetCurrency),
-					point = GeoPointDto(null, null),
+					point = resolved?.let { GeoPointDto(it.lat, it.lng) },
 					orderIndex = index,
 				)
 			}
-		return TripRouteDto(trip.id, stops.size, null, stops, emptyList())
+		val coords = stops.mapNotNull { stop ->
+			val lat = stop.point?.lat
+			val lng = stop.point?.lng
+			if (lat != null && lng != null) PlaceCatalog.LatLng(lat, lng) else null
+		}
+		val path = coords.map { GeoPointDto(it.lat, it.lng) }
+		val distance = coords.zipWithNext()
+			.fold(BigDecimal.ZERO) { acc, (from, to) -> acc.add(GeoMath.meters(from, to)) }
+			.takeIf { coords.size >= 2 }
+		return TripRouteDto(trip.id, stops.size, distance, stops, path)
 	}
 
 	private fun livePurchases(tripId: UUID): List<Purchase> =

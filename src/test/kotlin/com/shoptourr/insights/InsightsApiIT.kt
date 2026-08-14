@@ -73,6 +73,8 @@ class InsightsApiIT {
 		mockMvc.perform(get("/api/trips/$tripId/route").header("Authorization", "Bearer $access"))
 			.andExpect(status().isOk)
 			.andExpect(jsonPath("$.stops[0].place").value("Time Out Market"))
+			.andExpect(jsonPath("$.stops[0].point.lat").value("38.706900"))
+			.andExpect(jsonPath("$.path[0].lng").value("-9.145700"))
 
 		mockMvc.perform(
 			post("/api/trips/$tripId/travelers")
