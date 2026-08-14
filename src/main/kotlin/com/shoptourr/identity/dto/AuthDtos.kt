@@ -53,6 +53,20 @@ data class ForgotPasswordRequest(
 	val email: String,
 )
 
+data class ResetPasswordRequest(
+	@field:NotBlank
+	@field:Email
+	val email: String,
+
+	@field:NotBlank
+	@field:Size(min = 16, max = 128)
+	val token: String,
+
+	@field:NotBlank
+	@field:Size(min = 6, max = 128)
+	val newPassword: String,
+)
+
 data class AuthUserDto(
 	val id: UUID,
 	val displayName: String,

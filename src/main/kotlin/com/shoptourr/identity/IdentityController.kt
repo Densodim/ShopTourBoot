@@ -6,6 +6,7 @@ import com.shoptourr.identity.dto.LoginRequest
 import com.shoptourr.identity.dto.LogoutRequest
 import com.shoptourr.identity.dto.RefreshTokenRequest
 import com.shoptourr.identity.dto.RegisterRequest
+import com.shoptourr.identity.dto.ResetPasswordRequest
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -52,5 +53,11 @@ class IdentityController(
 	@ResponseStatus(HttpStatus.NO_CONTENT)
 	fun forgotPassword(@Valid @RequestBody request: ForgotPasswordRequest) {
 		identityService.forgotPassword(request)
+	}
+
+	@PostMapping("/reset-password")
+	@ResponseStatus(HttpStatus.NO_CONTENT)
+	fun resetPassword(@Valid @RequestBody request: ResetPasswordRequest) {
+		identityService.resetPassword(request)
 	}
 }

@@ -1,7 +1,9 @@
 package com.shoptourr.identity
 
 import com.shoptourr.AuthenticationFailedException
+import com.shoptourr.DomainValidationException
 import com.shoptourr.ResourceConflictException
+import com.shoptourr.config.AuthProperties
 import com.shoptourr.config.JwtConfig
 import com.shoptourr.config.JwtProperties
 import com.shoptourr.config.MailProperties
@@ -10,6 +12,7 @@ import com.shoptourr.identity.dto.LoginRequest
 import com.shoptourr.identity.dto.LogoutRequest
 import com.shoptourr.identity.dto.RefreshTokenRequest
 import com.shoptourr.identity.dto.RegisterRequest
+import com.shoptourr.identity.dto.ResetPasswordRequest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
@@ -44,6 +47,9 @@ class IdentityServiceTest {
 	private lateinit var refreshTokens: RefreshTokenRepository
 
 	@Mock
+	private lateinit var resetTokens: PasswordResetTokenRepository
+
+	@Mock
 	private lateinit var mailSender: JavaMailSender
 
 	private val clock = Clock.fixed(Instant.parse("2026-08-13T09:00:00Z"), ZoneOffset.UTC)
@@ -63,13 +69,17 @@ class IdentityServiceTest {
 		service = IdentityService(
 			users,
 			refreshTokens,
+			resetTokens,
 			encoder,
 			tokenService,
 			mailSender,
 			MailProperties(from = "noreply@test.example"),
+			AuthProperties(),
 			clock,
 		)
 		lenient().`when`(refreshTokens.save(any(RefreshToken::class.java))).thenAnswer { it.arguments[0] }
+		lenient().`when`(resetTokens.save(any(PasswordResetToken::class.java))).thenAnswer { it.arguments[0] }
+		lenient().`when`(resetTokens.findAllByUserIdAndUsedAtIsNull(any() ?: UUID.randomUUID())).thenReturn(emptyList())
 	}
 
 	@Test
@@ -194,7 +204,9 @@ class IdentityServiceTest {
 		service.forgotPassword(ForgotPasswordRequest("ada@example.com"))
 		service.forgotPassword(ForgotPasswordRequest("missing@example.com"))
 
-		verify(mailSender).send(any(SimpleMailMessage::class.java))
+		val captor = org.mockito.ArgumentCaptor.forClass(SimpleMailMessage::class.java)
+		verify(mailSender).send(captor.capture())
+		assertTrue(captor.value.text.orEmpty().contains("Reset token:"))
 	}
 
 	@Test
@@ -205,6 +217,44 @@ class IdentityServiceTest {
 		)
 
 		service.forgotPassword(ForgotPasswordRequest("ada@example.com"))
+	}
+
+	@Test
+	fun `reset password accepts a live token and revokes sessions`() {
+		val user = existingUser()
+		val raw = "reset-token-value-ok-32ch"
+		val stored = PasswordResetToken(
+			userId = user.id,
+			tokenHash = tokenService.hash(raw),
+			expiresAt = Instant.now(clock).plus(Duration.ofMinutes(30)),
+			createdAt = Instant.now(clock),
+		)
+		val session = RefreshToken(
+			userId = user.id,
+			tokenHash = "live",
+			expiresAt = Instant.now(clock).plus(Duration.ofDays(1)),
+			createdAt = Instant.now(clock),
+		)
+		`when`(users.findByEmailIgnoreCaseAndDeletedAtIsNull("ada@example.com")).thenReturn(user)
+		`when`(resetTokens.findByTokenHash(tokenService.hash(raw))).thenReturn(stored)
+		`when`(refreshTokens.findAllByUserIdAndRevokedAtIsNull(user.id)).thenReturn(listOf(session))
+
+		service.resetPassword(ResetPasswordRequest("ada@example.com", raw, "newsecret"))
+
+		assertTrue(encoder.matches("newsecret", user.passwordHash))
+		assertEquals(Instant.now(clock), stored.usedAt)
+		assertEquals(Instant.now(clock), session.revokedAt)
+	}
+
+	@Test
+	fun `reset password rejects an unknown token without enumerating the user`() {
+		`when`(users.findByEmailIgnoreCaseAndDeletedAtIsNull("ada@example.com")).thenReturn(existingUser())
+		`when`(resetTokens.findByTokenHash(tokenService.hash("unknown-reset-token!!"))).thenReturn(null)
+
+		val ex = assertThrows<DomainValidationException> {
+			service.resetPassword(ResetPasswordRequest("ada@example.com", "unknown-reset-token!!", "newsecret"))
+		}
+		assertEquals(IdentityService.INVALID_RESET, ex.message)
 	}
 
 	private fun existingUser(): AppUser =

@@ -1,7 +1,9 @@
 package com.shoptourr.identity
 
 import com.shoptourr.AuthenticationFailedException
+import com.shoptourr.DomainValidationException
 import com.shoptourr.ResourceConflictException
+import com.shoptourr.config.AuthProperties
 import com.shoptourr.config.MailProperties
 import com.shoptourr.identity.dto.AuthTokensResponse
 import com.shoptourr.identity.dto.AuthUserDto
@@ -10,6 +12,7 @@ import com.shoptourr.identity.dto.LoginRequest
 import com.shoptourr.identity.dto.LogoutRequest
 import com.shoptourr.identity.dto.RefreshTokenRequest
 import com.shoptourr.identity.dto.RegisterRequest
+import com.shoptourr.identity.dto.ResetPasswordRequest
 import org.slf4j.LoggerFactory
 import org.springframework.mail.MailException
 import org.springframework.mail.SimpleMailMessage
@@ -25,10 +28,12 @@ import java.util.UUID
 class IdentityService(
 	private val users: AppUserRepository,
 	private val refreshTokens: RefreshTokenRepository,
+	private val resetTokens: PasswordResetTokenRepository,
 	private val passwordEncoder: PasswordEncoder,
 	private val tokenService: TokenService,
 	private val mailSender: JavaMailSender,
 	private val mailProperties: MailProperties,
+	private val authProperties: AuthProperties,
 	private val clock: Clock,
 ) {
 
@@ -100,20 +105,50 @@ class IdentityService(
 		}
 	}
 
+	@Transactional
 	fun forgotPassword(request: ForgotPasswordRequest) {
 		val user = users.findByEmailIgnoreCaseAndDeletedAtIsNull(normalizeEmail(request.email)) ?: return
+		val now = Instant.now(clock)
+		resetTokens.findAllByUserIdAndUsedAtIsNull(user.id).forEach { it.usedAt = now }
+		val token = tokenService.newRefreshTokenValue()
+		resetTokens.save(
+			PasswordResetToken(
+				userId = user.id,
+				tokenHash = tokenService.hash(token),
+				expiresAt = now.plus(authProperties.resetTokenTtl),
+				createdAt = now,
+			),
+		)
+		val minutes = authProperties.resetTokenTtl.toMinutes().coerceAtLeast(1)
 		val message = SimpleMailMessage().apply {
 			setFrom(mailProperties.from)
 			setTo(user.email)
 			subject = "Password reset"
-			text = "We received a request to reset the password for this ShopTourr account. " +
-				"If you did not ask for this, you can ignore the email."
+			text = "We received a request to reset the password for this ShopTourr account.\n" +
+				"Reset token: $token\n" +
+				"It expires in $minutes minutes. If you did not ask for this, you can ignore the email."
 		}
 		try {
 			mailSender.send(message)
 		} catch (ex: MailException) {
 			log.warn("Failed to send password-reset email for userId={}", user.id, ex)
 		}
+	}
+
+	@Transactional
+	fun resetPassword(request: ResetPasswordRequest) {
+		val now = Instant.now(clock)
+		val user = users.findByEmailIgnoreCaseAndDeletedAtIsNull(normalizeEmail(request.email))
+		val stored = resetTokens.findByTokenHash(tokenService.hash(request.token))
+		if (user == null || stored == null || stored.userId != user.id || !stored.isUsable(now)) {
+			throw DomainValidationException(INVALID_RESET)
+		}
+		user.passwordHash = requireNotNull(passwordEncoder.encode(request.newPassword)) {
+			"Password encoder returned null"
+		}
+		user.updatedAt = now
+		stored.usedAt = now
+		refreshTokens.findAllByUserIdAndRevokedAtIsNull(user.id).forEach { it.revokedAt = now }
 	}
 
 	private fun issueSession(user: AppUser, deviceName: String?): AuthTokensResponse {
@@ -141,6 +176,7 @@ class IdentityService(
 		const val DEFAULT_LOCALE = "ru"
 		const val INVALID_CREDENTIALS = "Invalid email or password."
 		const val INVALID_REFRESH = "Refresh token is invalid or expired."
+		const val INVALID_RESET = "Invalid or expired reset token."
 
 		fun normalizeEmail(email: String): String = email.trim().lowercase()
 	}

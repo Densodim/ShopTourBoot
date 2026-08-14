@@ -109,6 +109,17 @@ class IdentityApiIT {
 			.andExpect(status().isNoContent)
 	}
 
+	@Test
+	fun `reset password with a garbage token is a validation problem`() {
+		mockMvc.perform(
+			post("/api/auth/reset-password")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""{"email":"ada@example.com","token":"unknown-reset-token!!","newPassword":"newsecret"}"""),
+		)
+			.andExpect(status().isBadRequest)
+			.andExpect(jsonPath("$.code").value(ApiProblem.VALIDATION_ERROR))
+	}
+
 	companion object {
 		@JvmStatic
 		@DynamicPropertySource

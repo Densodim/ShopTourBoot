@@ -168,6 +168,16 @@ class IdentityControllerTest {
 			.andExpect(status().isNoContent)
 	}
 
+	@Test
+	fun `reset password is public and returns 204`() {
+		mockMvc.perform(
+			post("/api/auth/reset-password")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""{"email":"ada@example.com","token":"reset-token-value-ok","newPassword":"newsecret"}"""),
+		)
+			.andExpect(status().isNoContent)
+	}
+
 	private fun sampleTokens() = AuthTokensResponse(
 		accessToken = "access",
 		accessExpiresIn = 900,

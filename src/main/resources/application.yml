@@ -83,6 +83,8 @@ voyage:
     issuer: https://api.shoptourr.com
     access-token-ttl: 15m
     refresh-token-ttl: 30d
+  auth:
+    reset-token-ttl: 30m
 
 springdoc:
   api-docs:
