@@ -19,6 +19,9 @@ class PushDevice(
 	@Column(name = "token_hash", nullable = false, length = 64)
 	val tokenHash: String,
 
+	@Column(length = 512)
+	var token: String? = null,
+
 	@Column(nullable = false, length = 16)
 	var platform: String,
 

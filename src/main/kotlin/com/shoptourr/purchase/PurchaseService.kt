@@ -12,10 +12,13 @@ import com.shoptourr.purchase.dto.UpdatePurchaseRequest
 import com.shoptourr.shared.dto.MoneyDto
 import com.shoptourr.shared.dto.VatBreakdownDto
 import com.shoptourr.media.MediaService
+import com.shoptourr.push.PushService
 import com.shoptourr.trip.Trip
 import com.shoptourr.trip.TripService
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Clock
@@ -29,6 +32,7 @@ class PurchaseService(
 	private val purchases: PurchaseRepository,
 	private val tripService: TripService,
 	private val mediaService: MediaService,
+	private val pushService: PushService,
 	private val clock: Clock,
 ) {
 
@@ -59,8 +63,11 @@ class PurchaseService(
 			createdAt = now,
 			updatedAt = now,
 		)
+		val before = spent(tripId)
 		purchase.splitTravelerIds.addAll(resolveSplits(trip, request.splitWithTravelerIds))
-		return toDto(purchases.save(purchase), trip)
+		val saved = purchases.save(purchase)
+		notifyBudget(trip.ownerId, trip.id, before, before.add(saved.grossAmount), trip.budgetAmount)
+		return toDto(saved, trip)
 	}
 
 	@Transactional(readOnly = true)
@@ -98,6 +105,8 @@ class PurchaseService(
 	fun update(ownerId: UUID, tripId: UUID, purchaseId: UUID, request: UpdatePurchaseRequest): PurchaseDto {
 		val trip = tripService.requireOwned(ownerId, tripId)
 		val purchase = requireOnTrip(tripId, purchaseId)
+		val before = spent(tripId)
+		val oldGross = purchase.grossAmount
 		request.name?.trim()?.takeIf { it.isNotBlank() }?.let { purchase.name = it }
 		request.category?.let { purchase.category = it.name }
 		request.taxRefundEligible?.let { purchase.taxRefundEligible = it }
@@ -122,6 +131,7 @@ class PurchaseService(
 			purchase.splitTravelerIds.addAll(resolveSplits(trip, it))
 		}
 		purchase.updatedAt = Instant.now(clock)
+		notifyBudget(trip.ownerId, trip.id, before, before.subtract(oldGross).add(purchase.grossAmount), trip.budgetAmount)
 		return toDto(purchase, trip)
 	}
 
@@ -150,6 +160,34 @@ class PurchaseService(
 			throw DomainValidationException("splitWithTravelerIds must belong to this trip")
 		}
 		return requested.toSet()
+	}
+
+	private fun spent(tripId: UUID): BigDecimal =
+		purchases.findAllByTripIdAndDeletedAtIsNullOrderByPurchaseDateDescPurchaseTimeDesc(tripId)
+			.fold(BigDecimal.ZERO) { acc, item -> acc.add(item.grossAmount) }
+
+	private fun notifyBudget(
+		userId: UUID,
+		tripId: UUID,
+		before: BigDecimal,
+		after: BigDecimal,
+		budget: BigDecimal,
+	) {
+		if (PushService.crossing(before, after, budget) == null) {
+			return
+		}
+		val send = {
+			pushService.notifyBudgetCrossing(userId, tripId, before, after, budget)
+		}
+		if (TransactionSynchronizationManager.isSynchronizationActive()) {
+			TransactionSynchronizationManager.registerSynchronization(
+				object : TransactionSynchronization {
+					override fun afterCommit() = send()
+				},
+			)
+		} else {
+			send()
+		}
 	}
 
 	private fun toDto(purchase: Purchase, trip: Trip): PurchaseDto {

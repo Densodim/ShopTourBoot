@@ -78,6 +78,9 @@ voyage:
     base-url: ${VOYAGE_OCR_BASE_URL:https://api.ocr.space}
     api-key: ${VOYAGE_OCR_API_KEY:}
     cache-ttl: 7d
+  fcm:
+    enabled: ${VOYAGE_FCM_ENABLED:true}
+    credentials: ${VOYAGE_FCM_CREDENTIALS:}
   export:
     public-base-url: ${VOYAGE_PUBLIC_BASE_URL:http://localhost:8080}
     download-ttl: 24h

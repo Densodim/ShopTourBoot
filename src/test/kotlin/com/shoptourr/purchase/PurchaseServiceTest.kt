@@ -3,6 +3,7 @@ package com.shoptourr.purchase
 import com.shoptourr.purchase.dto.CreatePurchaseRequest
 import com.shoptourr.purchase.dto.PurchaseCategory
 import com.shoptourr.media.MediaService
+import com.shoptourr.push.PushService
 import com.shoptourr.shared.dto.MoneyDto
 import com.shoptourr.trip.Traveler
 import com.shoptourr.trip.Trip
@@ -36,6 +37,9 @@ class PurchaseServiceTest {
 	@Mock
 	private lateinit var mediaService: MediaService
 
+	@Mock
+	private lateinit var pushService: PushService
+
 	private val clock = Clock.fixed(Instant.parse("2026-08-13T12:00:00Z"), ZoneOffset.UTC)
 	private lateinit var service: PurchaseService
 	private lateinit var trip: Trip
@@ -43,7 +47,7 @@ class PurchaseServiceTest {
 
 	@BeforeEach
 	fun setUp() {
-		service = PurchaseService(purchases, tripService, mediaService, clock)
+		service = PurchaseService(purchases, tripService, mediaService, pushService, clock)
 		trip = Trip(
 			ownerId = ownerId,
 			city = "Lisbon",
@@ -71,6 +75,8 @@ class PurchaseServiceTest {
 		)
 		lenient().`when`(tripService.requireOwned(ownerId, trip.id)).thenReturn(trip)
 		lenient().`when`(purchases.save(any(Purchase::class.java))).thenAnswer { it.arguments[0] }
+		lenient().`when`(purchases.findAllByTripIdAndDeletedAtIsNullOrderByPurchaseDateDescPurchaseTimeDesc(trip.id))
+			.thenReturn(emptyList())
 	}
 
 	@Test
@@ -149,5 +155,45 @@ class PurchaseServiceTest {
 		val list = service.list(ownerId, trip.id)
 
 		assertEquals("http://localhost:8080/dev-uploads/$mediaId", list.days.single().items.single().receiptThumbnailUrl)
+	}
+
+	@Test
+	fun `create notifies when spend crosses 80 percent of budget`() {
+		val prior = Purchase(
+			tripId = trip.id,
+			name = "Hotel",
+			category = "HOTEL",
+			grossAmount = BigDecimal("1100.00"),
+			currency = "EUR",
+			netAmount = BigDecimal("894.31"),
+			vatAmount = BigDecimal("205.69"),
+			vatRatePercent = BigDecimal("23"),
+			vatIncluded = true,
+			purchaseDate = LocalDate.of(2026, 8, 12),
+			purchaseTime = java.time.LocalTime.of(9, 0),
+			createdAt = Instant.now(clock),
+			updatedAt = Instant.now(clock),
+		)
+		`when`(purchases.findAllByTripIdAndDeletedAtIsNullOrderByPurchaseDateDescPurchaseTimeDesc(trip.id))
+			.thenReturn(listOf(prior))
+
+		service.create(
+			ownerId,
+			trip.id,
+			CreatePurchaseRequest(
+				name = "Dinner",
+				category = PurchaseCategory.FOOD,
+				amount = MoneyDto(BigDecimal("150.00"), "EUR"),
+				vatIncluded = true,
+			),
+		)
+
+		org.mockito.Mockito.verify(pushService).notifyBudgetCrossing(
+			ownerId,
+			trip.id,
+			BigDecimal("1100.00"),
+			BigDecimal("1250.00"),
+			BigDecimal("1500.00"),
+		)
 	}
 }
