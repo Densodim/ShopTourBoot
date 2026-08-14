@@ -2,13 +2,16 @@ package com.shoptourr.export
 
 import com.shoptourr.ResourceNotFoundException
 import com.shoptourr.config.ExportProperties
+import com.shoptourr.diary.DiaryEntryRepository
 import com.shoptourr.export.dto.CreateExportRequest
 import com.shoptourr.export.dto.ExportFormat
 import com.shoptourr.export.dto.ExportJobDto
 import com.shoptourr.export.dto.ExportJobStatus
+import com.shoptourr.purchase.PurchaseRepository
 import com.shoptourr.trip.TripService
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder
 import java.time.Clock
 import java.time.Instant
 import java.util.UUID
@@ -17,6 +20,8 @@ import java.util.UUID
 class ExportService(
 	private val jobs: ExportJobRepository,
 	private val tripService: TripService,
+	private val purchases: PurchaseRepository,
+	private val diaryEntries: DiaryEntryRepository,
 	private val exportProperties: ExportProperties,
 	private val clock: Clock,
 ) {
@@ -36,7 +41,7 @@ class ExportService(
 			finishedAt = now,
 			expiresAt = now.plus(exportProperties.downloadTtl),
 		)
-		job.downloadUrl = "${exportProperties.publicBaseUrl.trimEnd('/')}/dev-exports/${job.id}"
+		job.downloadUrl = "${publicBaseUrl()}/dev-exports/${job.id}"
 		return toDto(jobs.save(job), now)
 	}
 
@@ -48,6 +53,56 @@ class ExportService(
 		}
 		tripService.requireOwned(ownerId, job.tripId)
 		return toDto(job, Instant.now(clock))
+	}
+
+	@Transactional(readOnly = true)
+	fun loadFile(exportId: UUID): StoredExport {
+		val now = Instant.now(clock)
+		val job = jobs.findById(exportId).orElse(null)
+			?: throw ResourceNotFoundException("Export not found.")
+		if (job.expiresAt?.let { !it.isAfter(now) } == true) {
+			throw ResourceNotFoundException("Export not found.")
+		}
+		tripService.requireOwned(job.ownerId, job.tripId)
+		val purchaseRows = purchases
+			.findAllByTripIdAndDeletedAtIsNullOrderByPurchaseDateDescPurchaseTimeDesc(job.tripId)
+			.map { purchase ->
+				ExportCsv.PurchaseRow(
+					id = purchase.id,
+					name = purchase.name,
+					category = purchase.category,
+					date = purchase.purchaseDate,
+					time = purchase.purchaseTime,
+					place = purchase.place,
+					gross = purchase.grossAmount,
+					net = purchase.netAmount,
+					vat = purchase.vatAmount,
+					vatRate = purchase.vatRatePercent,
+					currency = purchase.currency,
+					taxRefundEligible = purchase.taxRefundEligible,
+				)
+			}
+		val diaryRows = if (job.includeDiary) {
+			diaryEntries.findAllByTripIdAndDeletedAtIsNullOrderByEntryDateDescCreatedAtDesc(job.tripId)
+				.map { entry -> ExportCsv.DiaryRow(entry.entryDate, entry.mood, entry.text) }
+		} else {
+			null
+		}
+		val bytes = ExportCsv.render(purchaseRows, diaryRows).toByteArray(Charsets.UTF_8)
+		return StoredExport(
+			filename = "export-${job.id}.csv",
+			contentType = "text/csv; charset=UTF-8",
+			bytes = bytes,
+		)
+	}
+
+	private fun publicBaseUrl(): String {
+		return try {
+			val fromRequest = ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString()
+			fromRequest.ifBlank { exportProperties.publicBaseUrl.trimEnd('/') }
+		} catch (_: IllegalStateException) {
+			exportProperties.publicBaseUrl.trimEnd('/')
+		}
 	}
 
 	private fun toDto(job: ExportJob, now: Instant): ExportJobDto {
@@ -66,3 +121,9 @@ class ExportService(
 		)
 	}
 }
+
+data class StoredExport(
+	val filename: String,
+	val contentType: String,
+	val bytes: ByteArray,
+)

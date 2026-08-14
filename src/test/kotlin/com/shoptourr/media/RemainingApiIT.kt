@@ -110,6 +110,11 @@ class RemainingApiIT {
 			.andExpect(status().isOk)
 			.andExpect(jsonPath("$.format").value("CSV"))
 
+		mockMvc.perform(get("/dev-exports/$exportId"))
+			.andExpect(status().isOk)
+			.andExpect(content().contentTypeCompatibleWith(MediaType("text", "csv")))
+			.andExpect(content().string(org.hamcrest.Matchers.containsString("tax_refund_eligible")))
+
 		mockMvc.perform(
 			post("/api/trips/$tripId/invites")
 				.header("Authorization", "Bearer $access")
