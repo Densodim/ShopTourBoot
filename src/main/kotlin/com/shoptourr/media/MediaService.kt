@@ -34,6 +34,7 @@ class MediaService(
 			throw DomainValidationException("File exceeds 12MB limit.")
 		}
 		val now = Instant.now(clock)
+		val expiresAt = now.plus(mediaProperties.uploadTtl)
 		val asset = assets.save(
 			MediaAsset(
 				userId = userId,
@@ -44,13 +45,14 @@ class MediaService(
 				sha256Hex = request.sha256Hex,
 				createdAt = now,
 				updatedAt = now,
+				uploadExpiresAt = expiresAt,
 			),
 		)
 		return MediaUploadIntentResponse(
 			mediaId = asset.id,
 			uploadUrl = "${publicBaseUrl()}/dev-uploads/${asset.id}",
 			requiredHeaders = mapOf("Content-Type" to asset.contentType),
-			uploadExpiresAt = now.plus(mediaProperties.uploadTtl),
+			uploadExpiresAt = expiresAt,
 			status = MediaStatus.PENDING_UPLOAD,
 		)
 	}
@@ -61,6 +63,10 @@ class MediaService(
 			?: throw ResourceNotFoundException("Media not found.")
 		if (asset.status == MediaStatus.READY.name) {
 			throw DomainValidationException("Media is already confirmed.")
+		}
+		val now = Instant.now(clock)
+		if (asset.uploadExpiresAt?.let { !now.isBefore(it) } == true) {
+			throw DomainValidationException("Upload URL has expired.")
 		}
 		if (body.isEmpty()) {
 			throw DomainValidationException("Empty upload.")

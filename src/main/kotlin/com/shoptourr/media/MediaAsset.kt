@@ -37,6 +37,9 @@ class MediaAsset(
 	@Column(name = "storage_key", length = 512)
 	var storageKey: String? = null,
 
+	@Column(name = "upload_expires_at")
+	var uploadExpiresAt: Instant? = null,
+
 	@Column(name = "created_at", nullable = false)
 	val createdAt: Instant,
 

@@ -5,6 +5,7 @@ import com.shoptourr.MediaNotReadyException
 import com.shoptourr.config.MediaProperties
 import com.shoptourr.config.OcrProperties
 import com.shoptourr.media.dto.ConfirmMediaUploadRequest
+import com.shoptourr.media.dto.CreateMediaUploadIntentRequest
 import com.shoptourr.media.dto.MediaPurpose
 import com.shoptourr.media.dto.MediaStatus
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -43,6 +44,20 @@ class MediaServiceTest {
 			OcrProperties(enabled = false),
 		)
 		service = MediaService(assets, blobs, ocr, MediaProperties(), clock)
+	}
+
+	@Test
+	fun `createIntent persists uploadExpiresAt`() {
+		val captor = org.mockito.ArgumentCaptor.forClass(MediaAsset::class.java)
+		`when`(assets.save(captor.capture())).thenAnswer { it.arguments[0] }
+
+		val dto = service.createIntent(
+			userId,
+			CreateMediaUploadIntentRequest(MediaPurpose.RECEIPT, "image/jpeg", 4),
+		)
+
+		assertEquals(Instant.parse("2026-08-13T12:15:00Z"), dto.uploadExpiresAt)
+		assertEquals(Instant.parse("2026-08-13T12:15:00Z"), captor.value.uploadExpiresAt)
 	}
 
 	@Test
@@ -93,6 +108,35 @@ class MediaServiceTest {
 		assertEquals(payload.size.toLong(), asset.byteSize)
 		assertEquals(MediaService.keyFor(asset), asset.storageKey)
 		assertEquals(null, asset.content)
+		assertTrue(blobs.exists(MediaService.keyFor(asset)))
+	}
+
+	@Test
+	fun `storeBytes rejects an expired upload window`() {
+		val asset = asset(
+			status = MediaStatus.PENDING_UPLOAD.name,
+			uploadExpiresAt = Instant.parse("2026-08-13T11:45:00Z"),
+		)
+		`when`(assets.findByIdAndDeletedAtIsNull(asset.id)).thenReturn(asset)
+
+		assertThrows<DomainValidationException> {
+			service.storeBytes(asset.id, byteArrayOf(1, 2, 3, 4))
+		}
+	}
+
+	@Test
+	fun `storeBytes accepts a put before uploadExpiresAt`() {
+		val payload = byteArrayOf(1, 2, 3, 4)
+		val asset = asset(
+			status = MediaStatus.PENDING_UPLOAD.name,
+			sha256Hex = sha256Hex(payload),
+			uploadExpiresAt = Instant.parse("2026-08-13T12:15:00Z"),
+		)
+		`when`(assets.findByIdAndDeletedAtIsNull(asset.id)).thenReturn(asset)
+
+		service.storeBytes(asset.id, payload)
+
+		assertEquals(MediaStatus.UPLOADED.name, asset.status)
 		assertTrue(blobs.exists(MediaService.keyFor(asset)))
 	}
 
@@ -155,6 +199,7 @@ class MediaServiceTest {
 		content: ByteArray? = null,
 		sha256Hex: String? = null,
 		contentType: String = "image/jpeg",
+		uploadExpiresAt: Instant? = null,
 	) = MediaAsset(
 		userId = userId,
 		purpose = MediaPurpose.RECEIPT.name,
@@ -163,6 +208,7 @@ class MediaServiceTest {
 		byteSize = content?.size?.toLong() ?: 4,
 		sha256Hex = sha256Hex,
 		content = content,
+		uploadExpiresAt = uploadExpiresAt,
 		createdAt = Instant.now(clock),
 		updatedAt = Instant.now(clock),
 	)
