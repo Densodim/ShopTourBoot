@@ -57,4 +57,45 @@ class ExportCsvTest {
 			csv,
 		)
 	}
+
+	@Test
+	fun `adds tax-free columns and summary when requested`() {
+		val purchaseId = UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
+		val csv = ExportCsv.render(
+			purchases = listOf(
+				ExportCsv.PurchaseRow(
+					id = purchaseId,
+					name = "Watch",
+					category = "SHOPPING",
+					date = LocalDate.parse("2026-08-12"),
+					time = LocalTime.parse("11:00:00"),
+					place = "Chiado",
+					gross = BigDecimal("123.00"),
+					net = BigDecimal("100.00"),
+					vat = BigDecimal("23.00"),
+					vatRate = BigDecimal("23.00"),
+					currency = "EUR",
+					taxRefundEligible = true,
+					estimatedRefund = BigDecimal("15.99"),
+					meetsMinimum = true,
+				),
+			),
+			diary = null,
+			taxFree = ExportCsv.TaxFreeBlock(
+				currency = "EUR",
+				minimum = BigDecimal("50.00"),
+				refundRate = BigDecimal("0.13"),
+				region = "Portugal",
+			),
+		)
+
+		assertTrue(
+			csv.startsWith(
+				"id,name,category,date,time,place,gross,net,vat,vat_rate,currency,tax_refund_eligible,estimated_refund,meets_minimum\n",
+			),
+		)
+		assertTrue(csv.contains("123.00,100.00,23.00,23.00,EUR,true,15.99,true"))
+		assertTrue(csv.contains("\ntax_free\n"))
+		assertTrue(csv.contains("EUR,50.00,0.13,Portugal,1,123.00,15.99"))
+	}
 }

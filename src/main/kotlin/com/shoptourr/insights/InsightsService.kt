@@ -191,20 +191,11 @@ class InsightsService(
 
 	private fun rulesFor(trip: Trip): TaxFreeRulesDto {
 		val currency = trip.budgetCurrency
-		val minimum = when (trip.countryCode) {
-			"PT" -> BigDecimal("50.00")
-			"JP" -> BigDecimal("5000.00")
-			else -> BigDecimal("100.00")
-		}
-		val rate = when (trip.countryCode) {
-			"PT" -> BigDecimal("0.13")
-			"JP" -> BigDecimal("0.10")
-			else -> BigDecimal("0.10")
-		}
+		val rules = TaxFreeCatalog.rules(trip.countryCode)
 		return TaxFreeRulesDto(
 			currency = currency,
-			minimumPurchase = MoneyDto(minimum, currency),
-			estimatedRefundRate = rate,
+			minimumPurchase = MoneyDto(rules.minimum, currency),
+			estimatedRefundRate = rules.rate,
 			regionLabel = trip.country,
 		)
 	}

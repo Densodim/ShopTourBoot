@@ -7,11 +7,13 @@ import com.shoptourr.export.dto.CreateExportRequest
 import com.shoptourr.export.dto.ExportFormat
 import com.shoptourr.export.dto.ExportJobDto
 import com.shoptourr.export.dto.ExportJobStatus
+import com.shoptourr.insights.TaxFreeCatalog
 import com.shoptourr.purchase.PurchaseRepository
 import com.shoptourr.trip.TripService
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder
+import java.math.RoundingMode
 import java.time.Clock
 import java.time.Instant
 import java.util.UUID
@@ -64,9 +66,21 @@ class ExportService(
 			throw ResourceNotFoundException("Export not found.")
 		}
 		val trip = tripService.requireOwned(job.ownerId, job.tripId)
+		val taxFreeRules = if (job.includeTaxFree) TaxFreeCatalog.rules(trip.countryCode) else null
 		val purchaseRows = purchases
 			.findAllByTripIdAndDeletedAtIsNullOrderByPurchaseDateDescPurchaseTimeDesc(job.tripId)
 			.map { purchase ->
+				val amount = purchase.grossAmount.setScale(2, RoundingMode.HALF_UP)
+				val estimatedRefund = if (taxFreeRules != null && purchase.taxRefundEligible) {
+					amount.multiply(taxFreeRules.rate).setScale(2, RoundingMode.HALF_UP)
+				} else {
+					null
+				}
+				val meetsMinimum = if (taxFreeRules != null) {
+					purchase.taxRefundEligible && amount >= taxFreeRules.minimum
+				} else {
+					null
+				}
 				ExportCsv.PurchaseRow(
 					id = purchase.id,
 					name = purchase.name,
@@ -80,6 +94,8 @@ class ExportService(
 					vatRate = purchase.vatRatePercent,
 					currency = purchase.currency,
 					taxRefundEligible = purchase.taxRefundEligible,
+					estimatedRefund = estimatedRefund,
+					meetsMinimum = meetsMinimum,
 				)
 			}
 		val diaryRows = if (job.includeDiary) {
@@ -88,7 +104,15 @@ class ExportService(
 		} else {
 			null
 		}
-		val csv = ExportCsv.render(purchaseRows, diaryRows)
+		val taxFree = taxFreeRules?.let { rules ->
+			ExportCsv.TaxFreeBlock(
+				currency = trip.budgetCurrency,
+				minimum = rules.minimum,
+				refundRate = rules.rate,
+				region = trip.country,
+			)
+		}
+		val csv = ExportCsv.render(purchaseRows, diaryRows, taxFree)
 		val title = "${trip.city}, ${trip.country}"
 		return when (ExportFormat.valueOf(job.format)) {
 			ExportFormat.CSV -> StoredExport(
