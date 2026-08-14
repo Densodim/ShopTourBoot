@@ -15,6 +15,7 @@ object PublicEndpoints {
 		"/api/auth/refresh",
 		"/api/auth/forgot-password",
 		"/api/auth/reset-password",
+		"/api/me/app-config",
 		"/api/_ping",
 		"/dev-uploads/**",
 		"/dev-exports/**",

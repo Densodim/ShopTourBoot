@@ -102,9 +102,22 @@ class MeControllerTest {
 	}
 
 	@Test
-	fun `app config is authenticated`() {
+	fun `app config is public before login`() {
+		`when`(meService.appConfig()).thenReturn(
+			com.shoptourr.identity.dto.ClientRemoteConfigDto(
+				minAndroidBuild = 1,
+				minIosBuild = 1,
+				softMinAndroidBuild = 1,
+				softMinIosBuild = 1,
+				flags = com.shoptourr.identity.dto.FeatureFlagsDto(true, true, false),
+				storeUrlAndroid = null,
+				storeUrlIos = null,
+			),
+		)
+
 		mockMvc.perform(get("/api/me/app-config"))
-			.andExpect(status().isUnauthorized)
+			.andExpect(status().isOk)
+			.andExpect(jsonPath("$.minIosBuild").value(1))
 	}
 
 	@Test

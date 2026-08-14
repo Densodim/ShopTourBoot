@@ -74,6 +74,10 @@ class MeApiIT {
 			.andExpect(status().isOk)
 			.andExpect(jsonPath("$.minAndroidBuild").value(1))
 			.andExpect(jsonPath("$.flags.exportPdf").value(true))
+
+		mockMvc.perform(get("/api/me/app-config"))
+			.andExpect(status().isOk)
+			.andExpect(jsonPath("$.minIosBuild").value(1))
 	}
 
 	companion object {
