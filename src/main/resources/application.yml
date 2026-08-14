@@ -69,6 +69,11 @@ voyage:
     download-ttl: 24h
   idempotency:
     ttl: 24h
+  rate-limit:
+    enabled: true
+    window: 1m
+    auth-per-window: 20
+    api-per-window: 300
   cors:
     # Local front-end dev servers only — override in deployed environments.
     allowed-origins: ${VOYAGE_CORS_ORIGINS:http://localhost:5173,http://localhost:3000}

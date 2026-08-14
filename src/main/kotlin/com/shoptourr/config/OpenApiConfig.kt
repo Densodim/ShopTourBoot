@@ -74,6 +74,7 @@ class OpenApiConfig {
 			add("404" to "No such resource (`code`: ${ApiProblem.NOT_FOUND}).")
 		}
 		add("500" to "Unexpected failure (`code`: ${ApiProblem.INTERNAL_ERROR}); quote the `X-Request-Id` response header when reporting it.")
+		add("429" to "Caller exceeded the rate window (`code`: ${ApiProblem.RATE_LIMITED}).")
 	}
 
 	private fun addIfAbsent(operation: Operation, status: String, description: String) {

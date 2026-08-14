@@ -54,6 +54,7 @@ class OpenApiConfigTest {
 		assertFalse(statuses.contains("401"), statuses.toString())
 		assertFalse(statuses.contains("403"), statuses.toString())
 		assertTrue(statuses.contains("500"), statuses.toString())
+		assertTrue(statuses.contains("429"), statuses.toString())
 	}
 
 	@Test

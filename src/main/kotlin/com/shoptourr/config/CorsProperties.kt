@@ -15,7 +15,13 @@ data class CorsProperties(
 	val allowedOrigins: List<String> = listOf("http://localhost:5173", "http://localhost:3000"),
 	val allowedMethods: List<String> = listOf("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"),
 	val allowedHeaders: List<String> = listOf("*"),
-	val exposedHeaders: List<String> = listOf("X-Request-Id"),
+	val exposedHeaders: List<String> = listOf(
+		"X-Request-Id",
+		"Retry-After",
+		"X-RateLimit-Limit",
+		"X-RateLimit-Remaining",
+		"X-RateLimit-Reset",
+	),
 	val allowCredentials: Boolean = true,
 	val maxAge: Duration = Duration.ofHours(1),
 )
