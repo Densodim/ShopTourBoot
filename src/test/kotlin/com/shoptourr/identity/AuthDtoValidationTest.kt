@@ -5,7 +5,7 @@ import com.shoptourr.identity.dto.LoginRequest
 import com.shoptourr.identity.dto.RefreshTokenRequest
 import com.shoptourr.identity.dto.RegisterRequest
 import com.shoptourr.identity.dto.ResetPasswordRequest
-import com.shoptourr.web.ValixRegistry
+import io.valix.generated.ValixRegistry
 import io.valix.spring.ValixFrameworkValidator
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
@@ -15,26 +15,14 @@ import kotlin.test.assertTrue
 /**
  * Guards the auth DTOs against Valix's fail-open behaviour: every path that cannot find a
  * validator reports the payload as valid rather than failing, so a broken codegen pipeline
- * disables validation without a single log line. These tests go through
- * [com.shoptourr.web.ValixRegistry] — the same entry point the argument resolver uses — so that
- * failure mode breaks the build instead.
+ * disables validation without a single log line. These tests go through the generated
+ * `ValixRegistry` — the same entry point the argument resolver uses — so that failure mode
+ * breaks the build instead.
+ *
+ * That every `@ValidValix` type reaches a validator at all is covered by
+ * [com.shoptourr.web.ValixRegistryCoverageTest].
  */
 class AuthDtoValidationTest {
-
-	@Test
-	fun `every migrated auth DTO was picked up by KSP`() {
-		val registered = ValixRegistry.registeredTypes()
-
-		listOf(
-			RegisterRequest::class,
-			LoginRequest::class,
-			RefreshTokenRequest::class,
-			ForgotPasswordRequest::class,
-			ResetPasswordRequest::class,
-		).forEach { type ->
-			assertTrue(type in registered, "${type.simpleName} is absent from ValixRegistry")
-		}
-	}
 
 	@Test
 	fun `register request rejects a short password`() {
