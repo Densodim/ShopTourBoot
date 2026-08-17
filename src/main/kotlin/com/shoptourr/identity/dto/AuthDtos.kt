@@ -1,44 +1,61 @@
 package com.shoptourr.identity.dto
 
-import jakarta.validation.constraints.Email
-import jakarta.validation.constraints.NotBlank
-import jakarta.validation.constraints.Size
+import io.valix.annotations.Email
+import io.valix.annotations.MaxLength
+import io.valix.annotations.MinLength
+import io.valix.annotations.NotBlank
+import io.valix.annotations.Sensitive
 import java.time.Instant
 import java.util.UUID
 
+/**
+ * Auth request bodies are validated by Valix: KSP generates a `…Validator` per class at build
+ * time and the controller opts in with `@ValidValix`. Every secret carries [Sensitive] so the
+ * generated error never repeats a raw password or token back to the caller.
+ *
+ * Valix has no string-aware `@Size`, so a jakarta `@Size(min, max)` on a String becomes the
+ * [MinLength]/[MaxLength] pair; nullable properties are null-guarded by the generated code, which
+ * matches jakarta's "absent means valid" semantics.
+ */
 data class RegisterRequest(
-	@field:NotBlank
-	@field:Size(min = 2, max = 80)
+	@NotBlank
+	@MinLength(2)
+	@MaxLength(80)
 	val displayName: String,
 
-	@field:NotBlank
-	@field:Email
-	@field:Size(max = 254)
+	@NotBlank
+	@Email
+	@MaxLength(254)
 	val email: String,
 
-	@field:NotBlank
-	@field:Size(min = 6, max = 128)
+	@NotBlank
+	@MinLength(6)
+	@MaxLength(128)
+	@Sensitive
 	val password: String,
 
-	@field:Size(min = 2, max = 5)
+	@MinLength(2)
+	@MaxLength(5)
 	val locale: String? = null,
 )
 
 data class LoginRequest(
-	@field:NotBlank
-	@field:Email
+	@NotBlank
+	@Email
 	val email: String,
 
-	@field:NotBlank
-	@field:Size(min = 1, max = 128)
+	@NotBlank
+	@MaxLength(128)
+	@Sensitive
 	val password: String,
 
-	@field:Size(max = 120)
+	@MaxLength(120)
 	val deviceName: String? = null,
 )
 
 data class RefreshTokenRequest(
-	@field:NotBlank
+	@NotBlank
+	@Sensitive
 	val refreshToken: String,
 )
 
@@ -48,22 +65,26 @@ data class LogoutRequest(
 )
 
 data class ForgotPasswordRequest(
-	@field:NotBlank
-	@field:Email
+	@NotBlank
+	@Email
 	val email: String,
 )
 
 data class ResetPasswordRequest(
-	@field:NotBlank
-	@field:Email
+	@NotBlank
+	@Email
 	val email: String,
 
-	@field:NotBlank
-	@field:Size(min = 16, max = 128)
+	@NotBlank
+	@MinLength(16)
+	@MaxLength(128)
+	@Sensitive
 	val token: String,
 
-	@field:NotBlank
-	@field:Size(min = 6, max = 128)
+	@NotBlank
+	@MinLength(6)
+	@MaxLength(128)
+	@Sensitive
 	val newPassword: String,
 )
 

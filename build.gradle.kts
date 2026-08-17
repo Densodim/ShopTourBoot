@@ -4,6 +4,7 @@ plugins {
 	kotlin("plugin.jpa") version "2.3.21"
 	id("org.springframework.boot") version "4.1.0"
 	id("io.spring.dependency-management") version "1.1.7"
+	id("com.google.devtools.ksp") version "2.3.9"
 }
 
 group = "com.shoptourr"
@@ -19,6 +20,9 @@ repositories {
 	mavenCentral()
 }
 
+/** Valix is not managed by the Boot BOM — one place to bump core, runtime, spring and the KSP processor together. */
+val valixVersion = "1.0.3"
+
 dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-actuator")
 	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
@@ -33,6 +37,10 @@ dependencies {
 	implementation("org.jetbrains.kotlin:kotlin-reflect")
 	implementation("tools.jackson.module:jackson-module-kotlin")
 	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.0")
+	implementation("com.developersyndicate.valix:valix-core:$valixVersion")
+	implementation("com.developersyndicate.valix:valix-runtime:$valixVersion")
+	implementation("com.developersyndicate.valix:valix-spring:$valixVersion")
+	ksp("com.developersyndicate.valix:valix-ksp:$valixVersion")
 	implementation(platform("software.amazon.awssdk:bom:2.32.26"))
 	implementation("software.amazon.awssdk:s3")
 	implementation("software.amazon.awssdk:url-connection-client")

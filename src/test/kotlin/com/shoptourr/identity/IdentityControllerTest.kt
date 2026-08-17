@@ -10,9 +10,11 @@ import com.shoptourr.identity.dto.AuthUserDto
 import com.shoptourr.identity.dto.LoginRequest
 import com.shoptourr.identity.dto.RefreshTokenRequest
 import com.shoptourr.identity.dto.RegisterRequest
+import com.shoptourr.web.ApiExceptionHandler
 import com.shoptourr.web.ApiProblem
 import com.shoptourr.web.ProblemAccessDeniedHandler
 import com.shoptourr.web.ProblemAuthenticationEntryPoint
+import com.shoptourr.web.ValixValidationConfig
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.`when`
 import org.springframework.beans.factory.annotation.Autowired
@@ -32,12 +34,20 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import java.time.Instant
 import java.util.UUID
 
+/**
+ * [ValixValidationConfig] is imported explicitly: `@WebMvcTest` loads only the
+ * auto-configurations on the slice's whitelist, and registers no user `@Configuration` of its
+ * own. Without the import the `@ValidValix` argument resolver is never installed and every body
+ * validates as valid — the slice would pass while proving nothing.
+ */
 @WebMvcTest(IdentityController::class)
 @Import(
 	SecurityConfig::class,
 	JacksonConfig::class,
 	ProblemAuthenticationEntryPoint::class,
 	ProblemAccessDeniedHandler::class,
+	ValixValidationConfig::class,
+	ApiExceptionHandler::class,
 )
 @EnableConfigurationProperties(CorsProperties::class)
 class IdentityControllerTest {

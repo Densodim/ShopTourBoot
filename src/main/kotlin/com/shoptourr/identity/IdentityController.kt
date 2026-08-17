@@ -7,7 +7,7 @@ import com.shoptourr.identity.dto.LogoutRequest
 import com.shoptourr.identity.dto.RefreshTokenRequest
 import com.shoptourr.identity.dto.RegisterRequest
 import com.shoptourr.identity.dto.ResetPasswordRequest
-import jakarta.validation.Valid
+import io.valix.spring.ValidValix
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
@@ -27,16 +27,16 @@ class IdentityController(
 ) {
 
 	@PostMapping("/register")
-	fun register(@Valid @RequestBody request: RegisterRequest): ResponseEntity<AuthTokensResponse> {
+	fun register(@ValidValix @RequestBody request: RegisterRequest): ResponseEntity<AuthTokensResponse> {
 		val body = identityService.register(request)
 		return ResponseEntity.created(URI.create("/api/me")).body(body)
 	}
 
 	@PostMapping("/login")
-	fun login(@Valid @RequestBody request: LoginRequest) = identityService.login(request)
+	fun login(@ValidValix @RequestBody request: LoginRequest) = identityService.login(request)
 
 	@PostMapping("/refresh")
-	fun refresh(@Valid @RequestBody request: RefreshTokenRequest) = identityService.refresh(request)
+	fun refresh(@ValidValix @RequestBody request: RefreshTokenRequest) = identityService.refresh(request)
 
 	@PostMapping("/logout")
 	@ResponseStatus(HttpStatus.NO_CONTENT)
@@ -51,13 +51,13 @@ class IdentityController(
 
 	@PostMapping("/forgot-password")
 	@ResponseStatus(HttpStatus.NO_CONTENT)
-	fun forgotPassword(@Valid @RequestBody request: ForgotPasswordRequest) {
+	fun forgotPassword(@ValidValix @RequestBody request: ForgotPasswordRequest) {
 		identityService.forgotPassword(request)
 	}
 
 	@PostMapping("/reset-password")
 	@ResponseStatus(HttpStatus.NO_CONTENT)
-	fun resetPassword(@Valid @RequestBody request: ResetPasswordRequest) {
+	fun resetPassword(@ValidValix @RequestBody request: ResetPasswordRequest) {
 		identityService.resetPassword(request)
 	}
 }

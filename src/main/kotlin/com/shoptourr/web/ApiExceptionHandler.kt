@@ -6,8 +6,11 @@ import com.shoptourr.IdempotencyConflictException
 import com.shoptourr.MediaNotReadyException
 import com.shoptourr.ResourceConflictException
 import com.shoptourr.ResourceNotFoundException
+import io.valix.spring.ValixValidationException
 import jakarta.validation.ConstraintViolationException
 import org.slf4j.LoggerFactory
+import org.springframework.core.Ordered
+import org.springframework.core.annotation.Order
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
@@ -30,8 +33,16 @@ import org.springframework.web.servlet.resource.NoResourceFoundException
  * and [handleExceptionInternal] stamps every one of them with a `code`. Boot's built-in
  * problem-details advice backs off in the presence of this bean, so there is exactly one place
  * deciding what an error looks like on the wire.
+ *
+ * The explicit [Order] is load-bearing: `valix-spring` auto-configures its own
+ * `ValixControllerAdvice`, which renders a bare `{status, error, errors}` map — no `code`, no
+ * `type`, and a `rejectedValue` echoing the offending input. Both advices default to
+ * `LOWEST_PRECEDENCE`, so without this annotation which one claims a
+ * [ValixValidationException] is left to bean ordering. Highest precedence keeps this class the
+ * single owner of the contract.
  */
 @RestControllerAdvice
+@Order(Ordered.HIGHEST_PRECEDENCE)
 class ApiExceptionHandler : ResponseEntityExceptionHandler() {
 
 	private val log = LoggerFactory.getLogger(javaClass)
@@ -96,6 +107,33 @@ class ApiExceptionHandler : ResponseEntityExceptionHandler() {
 					"field" to violation.propertyPath.toString(),
 					"code" to "INVALID",
 					"message" to violation.message,
+				)
+			},
+		)
+		return problem
+	}
+
+	/**
+	 * Valix rejected a `@ValidValix` request body. Rendered exactly like the jakarta path above so
+	 * a client cannot tell which validator ran — `rejectedValue` is deliberately dropped rather
+	 * than forwarded, since it carries the raw input that failed.
+	 */
+	@ExceptionHandler(ValixValidationException::class)
+	fun valixValidation(ex: ValixValidationException): ProblemDetail {
+		val errors = ex.validationResult.errors
+		val problem = ApiProblem.of(
+			HttpStatus.BAD_REQUEST,
+			ApiProblem.VALIDATION_ERROR,
+			"Validation failed",
+			errors.firstOrNull()?.message ?: "Validation failed",
+		)
+		problem.setProperty(
+			"errors",
+			errors.map { error ->
+				mapOf(
+					"field" to error.field,
+					"code" to error.code,
+					"message" to error.message,
 				)
 			},
 		)
