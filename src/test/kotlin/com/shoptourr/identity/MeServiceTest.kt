@@ -40,13 +40,16 @@ class MeServiceTest {
 	@Mock
 	private lateinit var mediaService: MediaService
 
+	@Mock
+	private lateinit var refreshTokens: RefreshTokenRepository
+
 	private val clock = Clock.fixed(Instant.parse("2026-08-13T12:00:00Z"), ZoneOffset.UTC)
 	private lateinit var service: MeService
 	private lateinit var user: AppUser
 
 	@BeforeEach
 	fun setUp() {
-		service = MeService(users, ClientProperties(minAndroidBuild = 12, minIosBuild = 34), clock, tripService, wishlistService, mediaService)
+		service = MeService(users, refreshTokens, ClientProperties(minAndroidBuild = 12, minIosBuild = 34), clock, tripService, wishlistService, mediaService)
 		user = AppUser(
 			email = "ada@example.com",
 			passwordHash = "hash",
@@ -130,5 +133,22 @@ class MeServiceTest {
 		assertEquals(12, config.minAndroidBuild)
 		assertEquals(34, config.minIosBuild)
 		assertEquals(true, config.flags.exportPdf)
+	}
+
+	@Test
+	fun `deleteAccount soft-deletes the user and revokes refresh tokens`() {
+		val token = RefreshToken(
+			userId = user.id,
+			tokenHash = "hash-1",
+			expiresAt = Instant.parse("2026-09-01T00:00:00Z"),
+			createdAt = Instant.parse("2026-08-01T00:00:00Z"),
+		)
+		`when`(refreshTokens.findAllByUserIdAndRevokedAtIsNull(user.id)).thenReturn(listOf(token))
+
+		service.deleteAccount(user.id)
+
+		assertEquals(Instant.now(clock), user.deletedAt)
+		assertEquals(Instant.now(clock), user.updatedAt)
+		assertEquals(Instant.now(clock), token.revokedAt)
 	}
 }

@@ -10,6 +10,7 @@ import org.springframework.http.MediaType
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
@@ -78,6 +79,12 @@ class MeApiIT {
 		mockMvc.perform(get("/api/me/app-config"))
 			.andExpect(status().isOk)
 			.andExpect(jsonPath("$.minIosBuild").value(1))
+
+		mockMvc.perform(delete("/api/me").header("Authorization", "Bearer $access"))
+			.andExpect(status().isNoContent)
+
+		mockMvc.perform(get("/api/me").header("Authorization", "Bearer $access"))
+			.andExpect(status().isNotFound)
 	}
 
 	companion object {

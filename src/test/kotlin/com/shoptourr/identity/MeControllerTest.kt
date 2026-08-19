@@ -22,6 +22,7 @@ import org.springframework.security.oauth2.jwt.JwtDecoder
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
@@ -133,6 +134,19 @@ class MeControllerTest {
 		)
 			.andExpect(status().isOk)
 			.andExpect(jsonPath("$.premiumPlan").value("PLUS"))
+	}
+
+	@Test
+	fun `delete me requires authentication`() {
+		mockMvc.perform(delete("/api/me"))
+			.andExpect(status().isUnauthorized)
+			.andExpect(jsonPath("$.code").value(ApiProblem.UNAUTHORIZED))
+	}
+
+	@Test
+	fun `delete me returns no content`() {
+		mockMvc.perform(delete("/api/me").with(userJwt()))
+			.andExpect(status().isNoContent)
 	}
 
 	private fun userJwt() = jwt().jwt { it.subject(userId.toString()) }

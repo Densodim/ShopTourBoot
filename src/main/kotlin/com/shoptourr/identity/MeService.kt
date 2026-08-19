@@ -24,6 +24,7 @@ import java.util.UUID
 @Service
 class MeService(
 	private val users: AppUserRepository,
+	private val refreshTokens: RefreshTokenRepository,
 	private val clientProperties: ClientProperties,
 	private val clock: Clock,
 	private val tripService: TripService,
@@ -80,6 +81,15 @@ class MeService(
 			storeUrlAndroid = clientProperties.storeUrlAndroid,
 			storeUrlIos = clientProperties.storeUrlIos,
 		)
+
+	@Transactional
+	fun deleteAccount(userId: UUID) {
+		val user = requireLiveUser(userId)
+		val now = Instant.now(clock)
+		user.deletedAt = now
+		user.updatedAt = now
+		refreshTokens.findAllByUserIdAndRevokedAtIsNull(userId).forEach { it.revokedAt = now }
+	}
 
 	private fun profile(user: AppUser): UserDto {
 		val (tripsCount, countriesCount) = tripService.countsFor(user.id)
