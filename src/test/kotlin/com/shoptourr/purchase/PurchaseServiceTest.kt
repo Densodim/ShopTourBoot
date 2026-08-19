@@ -1,8 +1,10 @@
 package com.shoptourr.purchase
 
 import com.shoptourr.DomainValidationException
+import com.shoptourr.ResourceConflictException
 import com.shoptourr.purchase.dto.CreatePurchaseRequest
 import com.shoptourr.purchase.dto.PurchaseCategory
+import com.shoptourr.purchase.dto.UpdatePurchaseRequest
 import com.shoptourr.media.MediaService
 import com.shoptourr.push.PushService
 import com.shoptourr.shared.dto.MoneyDto
@@ -289,5 +291,79 @@ class PurchaseServiceTest {
 		)
 		item.splitTravelerIds.add(trip.travelers.first().id)
 		return item
+	}
+
+	@Test
+	fun `update without If-Match still writes`() {
+		val item = listedPurchase(
+			id = UUID.fromString("dddddddd-dddd-dddd-dddd-dddddddddddd"),
+			date = LocalDate.of(2026, 8, 13),
+			gross = "4.50",
+		)
+		`when`(purchases.findByIdAndDeletedAtIsNull(item.id)).thenReturn(item)
+
+		val dto = service.update(ownerId, trip.id, item.id, UpdatePurchaseRequest(name = "Tea"))
+
+		assertEquals("Tea", dto.name)
+	}
+
+	@Test
+	fun `update with a stale If-Match is a conflict`() {
+		val item = listedPurchase(
+			id = UUID.fromString("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"),
+			date = LocalDate.of(2026, 8, 13),
+			gross = "4.50",
+		)
+		`when`(purchases.findByIdAndDeletedAtIsNull(item.id)).thenReturn(item)
+
+		assertThrows<ResourceConflictException> {
+			service.update(
+				ownerId,
+				trip.id,
+				item.id,
+				UpdatePurchaseRequest(name = "Tea"),
+				ifMatch = "\"2020-01-01T00:00:00Z\"",
+			)
+		}
+	}
+
+	@Test
+	fun `update with a matching If-Match succeeds`() {
+		val item = listedPurchase(
+			id = UUID.fromString("ffffffff-ffff-ffff-ffff-ffffffffffff"),
+			date = LocalDate.of(2026, 8, 13),
+			gross = "4.50",
+		)
+		`when`(purchases.findByIdAndDeletedAtIsNull(item.id)).thenReturn(item)
+
+		val dto = service.update(
+			ownerId,
+			trip.id,
+			item.id,
+			UpdatePurchaseRequest(name = "Tea"),
+			ifMatch = PurchaseEtag.of(item.updatedAt),
+		)
+
+		assertEquals("Tea", dto.name)
+	}
+
+	@Test
+	fun `update rejects a malformed If-Match`() {
+		val item = listedPurchase(
+			id = UUID.fromString("12345678-1234-1234-1234-123456789012"),
+			date = LocalDate.of(2026, 8, 13),
+			gross = "4.50",
+		)
+		`when`(purchases.findByIdAndDeletedAtIsNull(item.id)).thenReturn(item)
+
+		assertThrows<DomainValidationException> {
+			service.update(
+				ownerId,
+				trip.id,
+				item.id,
+				UpdatePurchaseRequest(name = "Tea"),
+				ifMatch = "not-an-instant",
+			)
+		}
 	}
 }

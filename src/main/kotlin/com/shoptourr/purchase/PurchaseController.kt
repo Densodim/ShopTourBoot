@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.ResponseStatus
@@ -60,8 +61,9 @@ class PurchaseController(
 		@AuthenticationPrincipal jwt: Jwt,
 		@PathVariable tripId: UUID,
 		@PathVariable id: UUID,
+		@RequestHeader(value = "If-Match", required = false) ifMatch: String?,
 		@Valid @RequestBody request: UpdatePurchaseRequest,
-	) = purchaseService.update(jwt.userId(), tripId, id, request)
+	) = purchaseService.update(jwt.userId(), tripId, id, request, ifMatch)
 
 	@DeleteMapping("/{id}")
 	@ResponseStatus(HttpStatus.NO_CONTENT)

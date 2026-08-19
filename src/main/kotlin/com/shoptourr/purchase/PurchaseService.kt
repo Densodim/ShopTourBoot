@@ -1,6 +1,7 @@
 package com.shoptourr.purchase
 
 import com.shoptourr.DomainValidationException
+import com.shoptourr.ResourceConflictException
 import com.shoptourr.ResourceNotFoundException
 import com.shoptourr.purchase.dto.CreatePurchaseRequest
 import com.shoptourr.purchase.dto.PurchaseCategory
@@ -120,9 +121,20 @@ class PurchaseService(
 	}
 
 	@Transactional
-	fun update(ownerId: UUID, tripId: UUID, purchaseId: UUID, request: UpdatePurchaseRequest): PurchaseDto {
+	fun update(
+		ownerId: UUID,
+		tripId: UUID,
+		purchaseId: UUID,
+		request: UpdatePurchaseRequest,
+		ifMatch: String? = null,
+	): PurchaseDto {
 		val trip = tripService.requireOwned(ownerId, tripId)
 		val purchase = requireOnTrip(tripId, purchaseId)
+		PurchaseEtag.parse(ifMatch)?.let { expected ->
+			if (expected != purchase.updatedAt) {
+				throw ResourceConflictException("Purchase was modified.")
+			}
+		}
 		val before = spent(tripId)
 		val oldGross = purchase.grossAmount
 		request.name?.trim()?.takeIf { it.isNotBlank() }?.let { purchase.name = it }
