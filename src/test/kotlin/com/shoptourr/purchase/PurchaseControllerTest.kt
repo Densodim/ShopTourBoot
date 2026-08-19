@@ -6,6 +6,7 @@ import com.shoptourr.config.SecurityConfig
 import com.shoptourr.purchase.dto.CreatePurchaseRequest
 import com.shoptourr.purchase.dto.PurchaseCategory
 import com.shoptourr.purchase.dto.PurchaseDto
+import com.shoptourr.purchase.dto.TripPurchasesResponse
 import com.shoptourr.shared.dto.MoneyDto
 import com.shoptourr.shared.dto.VatBreakdownDto
 import com.shoptourr.web.ApiProblem
@@ -61,6 +62,37 @@ class PurchaseControllerTest {
 		mockMvc.perform(get("/api/trips/$tripId/purchases"))
 			.andExpect(status().isUnauthorized)
 			.andExpect(jsonPath("$.code").value(ApiProblem.UNAUTHORIZED))
+	}
+
+	@Test
+	fun `list forwards keyset query params`() {
+		val afterId = UUID.fromString("44444444-4444-4444-4444-444444444444")
+		val afterDate = LocalDate.of(2026, 8, 13)
+		`when`(
+			purchaseService.list(
+				eq(userId) ?: userId,
+				eq(tripId) ?: tripId,
+				eq(afterDate) ?: afterDate,
+				eq(afterId) ?: afterId,
+				eq(2) ?: 2,
+			),
+		).thenReturn(
+			TripPurchasesResponse(
+				spentTotal = MoneyDto(BigDecimal.ZERO, "EUR"),
+				budget = MoneyDto(BigDecimal.ZERO, "EUR"),
+				remaining = MoneyDto(BigDecimal.ZERO, "EUR"),
+				days = emptyList(),
+			),
+		)
+
+		mockMvc.perform(
+			get("/api/trips/$tripId/purchases")
+				.param("afterDate", "2026-08-13")
+				.param("afterId", afterId.toString())
+				.param("size", "2")
+				.with(jwt().jwt { it.subject(userId.toString()) }),
+		)
+			.andExpect(status().isOk)
 	}
 
 	@Test

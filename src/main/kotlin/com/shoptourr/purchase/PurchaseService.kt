@@ -15,6 +15,7 @@ import com.shoptourr.media.MediaService
 import com.shoptourr.push.PushService
 import com.shoptourr.trip.Trip
 import com.shoptourr.trip.TripService
+import org.springframework.data.domain.PageRequest
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.transaction.support.TransactionSynchronization
@@ -77,12 +78,29 @@ class PurchaseService(
 	}
 
 	@Transactional(readOnly = true)
-	fun list(ownerId: UUID, tripId: UUID): TripPurchasesResponse {
+	fun list(
+		ownerId: UUID,
+		tripId: UUID,
+		afterDate: LocalDate? = null,
+		afterId: UUID? = null,
+		size: Int = DEFAULT_PAGE_SIZE,
+	): TripPurchasesResponse {
 		val trip = tripService.requireOwned(ownerId, tripId)
-		val items = purchases.findAllByTripIdAndDeletedAtIsNullOrderByPurchaseDateDescPurchaseTimeDesc(tripId)
+		if ((afterDate == null) != (afterId == null)) {
+			throw DomainValidationException("afterDate and afterId must be used together")
+		}
+		if (size !in 1..MAX_PAGE_SIZE) {
+			throw DomainValidationException("size must be between 1 and $MAX_PAGE_SIZE")
+		}
+		val pageable = PageRequest.of(0, size)
+		val items = if (afterDate == null || afterId == null) {
+			purchases.findByTripIdAndDeletedAtIsNullOrderByPurchaseDateDescIdDesc(tripId, pageable)
+		} else {
+			purchases.findPageAfterCursor(tripId, afterDate, afterId, pageable)
+		}
 		val today = LocalDate.now(clock)
 		val currency = trip.budgetCurrency
-		val spent = items.fold(BigDecimal.ZERO) { acc, item -> acc.add(item.grossAmount) }.money()
+		val spent = purchases.sumGrossByTripId(tripId).money()
 		val days = items.groupBy { it.purchaseDate }.toSortedMap(compareByDescending { it }).map { (date, dayItems) ->
 			val dtos = dayItems.map { toDto(it, trip) }
 			PurchaseDayGroupDto(
@@ -239,6 +257,9 @@ class PurchaseService(
 	}
 
 	companion object {
+		const val DEFAULT_PAGE_SIZE = 50
+		const val MAX_PAGE_SIZE = 100
+
 		fun labelKey(date: LocalDate, today: LocalDate): String = when (date) {
 			today -> "today"
 			today.minusDays(1) -> "yesterday"
