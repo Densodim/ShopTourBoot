@@ -1,6 +1,8 @@
 package com.shoptourr.diary.dto
 
+import com.shoptourr.shared.validation.FieldPatterns
 import jakarta.validation.constraints.NotBlank
+import jakarta.validation.constraints.Pattern
 import jakarta.validation.constraints.Size
 import java.time.Instant
 import java.time.LocalDate
@@ -20,16 +22,20 @@ data class CreateDiaryEntryRequest(
 	val entryDate: LocalDate? = null,
 	@field:NotBlank
 	@field:Size(min = 1, max = 8)
+	@field:Pattern(regexp = FieldPatterns.MOOD)
 	val mood: String,
 	@field:NotBlank
 	@field:Size(min = 1, max = 4000)
+	@field:Pattern(regexp = FieldPatterns.REQUIRED_TEXT)
 	val text: String,
 )
 
 data class UpdateDiaryEntryRequest(
 	@field:Size(min = 1, max = 8)
+	@field:Pattern(regexp = FieldPatterns.MOOD)
 	val mood: String? = null,
 	@field:Size(min = 1, max = 4000)
+	@field:Pattern(regexp = FieldPatterns.REQUIRED_TEXT)
 	val text: String? = null,
 )
 

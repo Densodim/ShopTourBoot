@@ -2,11 +2,13 @@ package com.shoptourr.purchase.dto
 
 import com.shoptourr.shared.dto.MoneyDto
 import com.shoptourr.shared.dto.VatBreakdownDto
+import com.shoptourr.shared.validation.FieldPatterns
 import jakarta.validation.Valid
 import jakarta.validation.constraints.DecimalMax
 import jakarta.validation.constraints.DecimalMin
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.NotNull
+import jakarta.validation.constraints.Pattern
 import jakarta.validation.constraints.Size
 import java.math.BigDecimal
 import java.time.Instant
@@ -48,6 +50,7 @@ data class PurchaseDto(
 data class CreatePurchaseRequest(
 	@field:NotBlank
 	@field:Size(min = 1, max = 200)
+	@field:Pattern(regexp = FieldPatterns.ITEM_OR_PLACE)
 	val name: String,
 	@field:NotNull
 	val category: PurchaseCategory,
@@ -60,6 +63,7 @@ data class CreatePurchaseRequest(
 	val vatRatePercent: BigDecimal? = null,
 	val taxRefundEligible: Boolean = false,
 	@field:Size(max = 200)
+	@field:Pattern(regexp = FieldPatterns.ITEM_OR_PLACE)
 	val place: String? = null,
 	val purchaseDate: LocalDate? = null,
 	val purchaseTime: LocalTime? = null,
@@ -69,6 +73,7 @@ data class CreatePurchaseRequest(
 
 data class UpdatePurchaseRequest(
 	@field:Size(min = 1, max = 200)
+	@field:Pattern(regexp = FieldPatterns.ITEM_OR_PLACE)
 	val name: String? = null,
 	val category: PurchaseCategory? = null,
 	@field:Valid
@@ -79,6 +84,7 @@ data class UpdatePurchaseRequest(
 	val vatRatePercent: BigDecimal? = null,
 	val taxRefundEligible: Boolean? = null,
 	@field:Size(max = 200)
+	@field:Pattern(regexp = FieldPatterns.ITEM_OR_PLACE)
 	val place: String? = null,
 	val purchaseDate: LocalDate? = null,
 	val purchaseTime: LocalTime? = null,

@@ -1,7 +1,9 @@
 package com.shoptourr.media.dto
 
+import com.shoptourr.shared.validation.FieldPatterns
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.NotNull
+import jakarta.validation.constraints.Pattern
 import jakarta.validation.constraints.Positive
 import jakarta.validation.constraints.Size
 import java.time.Instant
@@ -20,10 +22,12 @@ data class CreateMediaUploadIntentRequest(
 	val purpose: MediaPurpose,
 	@field:NotBlank
 	@field:Size(max = 128)
+	@field:Pattern(regexp = FieldPatterns.IMAGE_CONTENT_TYPE)
 	val contentType: String,
 	@field:Positive
 	val byteSize: Long,
 	@field:Size(min = 64, max = 64)
+	@field:Pattern(regexp = FieldPatterns.SHA256_HEX)
 	val sha256Hex: String? = null,
 )
 

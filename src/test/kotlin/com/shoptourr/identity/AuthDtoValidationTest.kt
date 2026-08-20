@@ -55,6 +55,46 @@ class AuthDtoValidationTest {
 	}
 
 	@Test
+	fun `register request rejects a display name of only symbols`() {
+		val result = ValixRegistry.validate(
+			RegisterRequest(displayName = "@@@", email = "ada@example.com", password = "secret1"),
+		)
+
+		assertFalse(result.valid)
+		assertTrue(result.errors.any { it.field == "displayName" })
+	}
+
+	@Test
+	fun `register request accepts accented and cyrillic display names`() {
+		listOf("O'Brien", "Côte", "Мария").forEach { name ->
+			val result = ValixRegistry.validate(
+				RegisterRequest(displayName = name, email = "ada@example.com", password = "secret1"),
+			)
+			assertTrue(result.valid, "$name: ${result.errors.map { "${it.field}:${it.code}" }}")
+		}
+	}
+
+	@Test
+	fun `register request rejects a locale that is not en or ru`() {
+		val result = ValixRegistry.validate(
+			RegisterRequest(displayName = "Ada", email = "ada@example.com", password = "secret1", locale = "en-US"),
+		)
+
+		assertFalse(result.valid)
+		assertTrue(result.errors.any { it.field == "locale" })
+	}
+
+	@Test
+	fun `login request rejects an email past the RFC maximum`() {
+		val result = ValixRegistry.validate(
+			LoginRequest(email = "a".repeat(250) + "@example.com", password = "secret1"),
+		)
+
+		assertFalse(result.valid)
+		assertTrue(result.errors.any { it.field == "email" })
+	}
+
+	@Test
 	fun `an absent locale is valid, matching the nullable jakarta semantics it replaced`() {
 		val result = ValixRegistry.validate(
 			RegisterRequest(displayName = "Ada", email = "ada@example.com", password = "secret1", locale = null),

@@ -5,6 +5,7 @@ import io.valix.annotations.Email
 import io.valix.annotations.MaxLength
 import io.valix.annotations.MinLength
 import io.valix.annotations.NotBlank
+import io.valix.annotations.Pattern
 import io.valix.annotations.Sensitive
 import java.time.Instant
 import java.util.UUID
@@ -17,11 +18,16 @@ import java.util.UUID
  * Valix has no string-aware `@Size`, so a jakarta `@Size(min, max)` on a String becomes the
  * [MinLength]/[MaxLength] pair; nullable properties are null-guarded by the generated code, which
  * matches jakarta's "absent means valid" semantics.
+ *
+ * `@Pattern` uses `regexp` (Valix's parameter name) and a string literal: KSP does not
+ * resolve `const val` references. Keep the expressions in lock-step with
+ * [com.shoptourr.shared.validation.FieldPatterns].
  */
 data class RegisterRequest(
 	@NotBlank
 	@MinLength(2)
 	@MaxLength(80)
+	@Pattern(regexp = """^(?=.*\p{L})[\p{L}\p{M} .,'’\-]+$""")
 	val displayName: String,
 
 	@NotBlank
@@ -35,14 +41,14 @@ data class RegisterRequest(
 	@Sensitive
 	val password: String,
 
-	@MinLength(2)
-	@MaxLength(5)
+	@Pattern(regexp = """^(en|ru)$""")
 	val locale: String? = null,
 )
 
 data class LoginRequest(
 	@NotBlank
 	@Email
+	@MaxLength(254)
 	val email: String,
 
 	@NotBlank
@@ -51,6 +57,7 @@ data class LoginRequest(
 	val password: String,
 
 	@MaxLength(120)
+	@Pattern(regexp = """^(?=.*[\p{L}\p{N}])[\p{L}\p{M}\p{N} ._-]+$""")
 	val deviceName: String? = null,
 )
 
@@ -68,6 +75,7 @@ data class LogoutRequest(
 data class ForgotPasswordRequest(
 	@NotBlank
 	@Email
+	@MaxLength(254)
 	val email: String,
 )
 
@@ -80,18 +88,22 @@ data class SocialLoginRequest(
 	val idToken: String,
 
 	@MaxLength(128)
+	@Pattern(regexp = """^[A-Za-z0-9_-]+$""")
 	val nonce: String? = null,
 
 	@MaxLength(80)
+	@Pattern(regexp = """^(?=.*\p{L})[\p{L}\p{M} .,'’\-]+$""")
 	val displayName: String? = null,
 
 	@MaxLength(120)
+	@Pattern(regexp = """^(?=.*[\p{L}\p{N}])[\p{L}\p{M}\p{N} ._-]+$""")
 	val deviceName: String? = null,
 )
 
 data class ResetPasswordRequest(
 	@NotBlank
 	@Email
+	@MaxLength(254)
 	val email: String,
 
 	@NotBlank

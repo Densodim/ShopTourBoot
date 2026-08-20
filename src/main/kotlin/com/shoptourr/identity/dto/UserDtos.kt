@@ -1,5 +1,6 @@
 package com.shoptourr.identity.dto
 
+import com.shoptourr.shared.validation.FieldPatterns
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.NotNull
 import jakarta.validation.constraints.Pattern
@@ -43,6 +44,7 @@ data class ActivatePremiumRequest(
 data class UpdateProfileRequest(
 	@field:NotBlank
 	@field:Size(min = 2, max = 80)
+	@field:Pattern(regexp = FieldPatterns.PERSON_OR_PLACE)
 	val displayName: String,
 	val avatarMediaId: UUID? = null,
 )
@@ -57,9 +59,10 @@ data class UserPreferencesDto(
 
 data class UpdatePreferencesRequest(
 	@field:Size(min = 2, max = 5)
+	@field:Pattern(regexp = FieldPatterns.LOCALE)
 	val locale: String? = null,
 	@field:Size(min = 3, max = 3)
-	@field:Pattern(regexp = "[A-Z]{3}")
+	@field:Pattern(regexp = FieldPatterns.ISO_4217)
 	val preferredCurrency: String? = null,
 	val theme: ThemePreference? = null,
 	val pushNotificationsEnabled: Boolean? = null,

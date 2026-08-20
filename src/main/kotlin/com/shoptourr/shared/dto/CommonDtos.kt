@@ -1,5 +1,6 @@
 package com.shoptourr.shared.dto
 
+import com.shoptourr.shared.validation.FieldPatterns
 import jakarta.validation.constraints.DecimalMin
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.NotNull
@@ -13,7 +14,7 @@ data class MoneyDto(
 	val amount: BigDecimal,
 	@field:NotBlank
 	@field:Size(min = 3, max = 3)
-	@field:Pattern(regexp = "[A-Z]{3}")
+	@field:Pattern(regexp = FieldPatterns.ISO_4217)
 	val currency: String,
 )
 
