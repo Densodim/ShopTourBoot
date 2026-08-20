@@ -60,6 +60,8 @@ grep -o 'tests="[0-9]*" skipped="[0-9]*"' build/test-results/test/*.xml
 |---|---|
 | `VOYAGE_JWT_SECRET` | HS256 signing secret, **min 32 chars**. Required outside local dev. |
 | `VOYAGE_CORS_ORIGINS` | Comma-separated browser origins allowed to call the API. Defaults to `http://localhost:5173,http://localhost:3000`. No wildcards — credentials are allowed. |
+| `VOYAGE_GOOGLE_CLIENT_IDS` | Comma-separated Google OAuth client IDs accepted as ID-token `aud` (Web + iOS + Android). Empty disables Google login. |
+| `VOYAGE_APPLE_AUDIENCES` | Comma-separated Apple `aud` values (iOS bundle ID and Services ID). Empty disables Apple login. |
 
 Local defaults in `application.yml` (Postgres `voyage/voyage@localhost:5432/voyage`,
 Redis `localhost:6379`, mail `localhost:1025`) are for development only.

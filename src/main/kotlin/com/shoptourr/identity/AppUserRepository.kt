@@ -6,4 +6,8 @@ import java.util.UUID
 interface AppUserRepository : JpaRepository<AppUser, UUID> {
 
 	fun findByEmailIgnoreCaseAndDeletedAtIsNull(email: String): AppUser?
+
+	fun findByGoogleSubAndDeletedAtIsNull(googleSub: String): AppUser?
+
+	fun findByAppleSubAndDeletedAtIsNull(appleSub: String): AppUser?
 }

@@ -33,6 +33,16 @@ class RateLimitFilterTest {
 	}
 
 	@Test
+	fun `oauth uses the auth bucket`() {
+		`when`(rateLimits.consume("auth", "10.0.0.8", 20))
+			.thenReturn(RateLimitDecision(true, 20, 19, clock.instant().epochSecond + 60))
+		val request = MockHttpServletRequest("POST", "/api/auth/oauth")
+		request.remoteAddr = "10.0.0.8"
+
+		filter.doFilter(request, MockHttpServletResponse(), MockFilterChain())
+	}
+
+	@Test
 	fun `login uses the auth bucket and client ip`() {
 		`when`(rateLimits.consume("auth", "10.0.0.8", 20))
 			.thenReturn(RateLimitDecision(true, 20, 19, clock.instant().epochSecond + 60))

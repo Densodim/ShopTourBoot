@@ -7,6 +7,7 @@ import com.shoptourr.identity.dto.LogoutRequest
 import com.shoptourr.identity.dto.RefreshTokenRequest
 import com.shoptourr.identity.dto.RegisterRequest
 import com.shoptourr.identity.dto.ResetPasswordRequest
+import com.shoptourr.identity.dto.SocialLoginRequest
 import io.valix.spring.ValidValix
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -34,6 +35,10 @@ class IdentityController(
 
 	@PostMapping("/login")
 	fun login(@ValidValix @RequestBody request: LoginRequest) = identityService.login(request)
+
+	@PostMapping("/oauth")
+	fun loginSocial(@ValidValix @RequestBody request: SocialLoginRequest) =
+		identityService.loginSocial(request)
 
 	@PostMapping("/refresh")
 	fun refresh(@ValidValix @RequestBody request: RefreshTokenRequest) = identityService.refresh(request)

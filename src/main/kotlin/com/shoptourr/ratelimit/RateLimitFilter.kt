@@ -77,6 +77,7 @@ class RateLimitFilter(
 
 		private val AUTH_PATHS = setOf(
 			"/api/auth/login",
+			"/api/auth/oauth",
 			"/api/auth/register",
 			"/api/auth/forgot-password",
 			"/api/auth/reset-password",

@@ -10,6 +10,7 @@ import com.shoptourr.identity.dto.AuthUserDto
 import com.shoptourr.identity.dto.LoginRequest
 import com.shoptourr.identity.dto.RefreshTokenRequest
 import com.shoptourr.identity.dto.RegisterRequest
+import com.shoptourr.identity.dto.SocialLoginRequest
 import com.shoptourr.web.ApiExceptionHandler
 import com.shoptourr.web.ApiProblem
 import com.shoptourr.web.ProblemAccessDeniedHandler
@@ -104,6 +105,23 @@ class IdentityControllerTest {
 		)
 			.andExpect(status().isConflict)
 			.andExpect(jsonPath("$.code").value(ApiProblem.CONFLICT))
+	}
+
+	@Test
+	fun `oauth is public`() {
+		`when`(
+			identityService.loginSocial(
+				SocialLoginRequest(SocialProvider.GOOGLE, "id-token", "nonce"),
+			),
+		).thenReturn(sampleTokens())
+
+		mockMvc.perform(
+			post("/api/auth/oauth")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""{"provider":"GOOGLE","idToken":"id-token","nonce":"nonce"}"""),
+		)
+			.andExpect(status().isOk)
+			.andExpect(jsonPath("$.accessToken").value("access"))
 	}
 
 	@Test

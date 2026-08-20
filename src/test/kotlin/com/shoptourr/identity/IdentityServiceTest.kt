@@ -13,6 +13,7 @@ import com.shoptourr.identity.dto.LogoutRequest
 import com.shoptourr.identity.dto.RefreshTokenRequest
 import com.shoptourr.identity.dto.RegisterRequest
 import com.shoptourr.identity.dto.ResetPasswordRequest
+import com.shoptourr.identity.dto.SocialLoginRequest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
@@ -52,6 +53,9 @@ class IdentityServiceTest {
 	@Mock
 	private lateinit var mailSender: JavaMailSender
 
+	@Mock
+	private lateinit var socialTokens: SocialTokenVerifier
+
 	private val clock = Clock.fixed(Instant.parse("2026-08-13T09:00:00Z"), ZoneOffset.UTC)
 	private val encoder = BCryptPasswordEncoder()
 	private val jwtProps = JwtProperties(
@@ -75,6 +79,7 @@ class IdentityServiceTest {
 			mailSender,
 			MailProperties(from = "noreply@test.example"),
 			AuthProperties(),
+			socialTokens,
 			clock,
 		)
 		lenient().`when`(refreshTokens.save(any(RefreshToken::class.java))).thenAnswer { it.arguments[0] }
@@ -241,9 +246,61 @@ class IdentityServiceTest {
 
 		service.resetPassword(ResetPasswordRequest("ada@example.com", raw, "newsecret"))
 
-		assertTrue(encoder.matches("newsecret", user.passwordHash))
+		assertTrue(encoder.matches("newsecret", requireNotNull(user.passwordHash)))
 		assertEquals(Instant.now(clock), stored.usedAt)
 		assertEquals(Instant.now(clock), session.revokedAt)
+	}
+
+	@Test
+	fun `google login creates a user without a password`() {
+		val identity = SocialIdentity(
+			provider = SocialProvider.GOOGLE,
+			subject = "google-sub-1",
+			email = "ada@example.com",
+			emailVerified = true,
+			displayName = "Ada",
+		)
+		`when`(socialTokens.verify(SocialProvider.GOOGLE, "id-token", "nonce")).thenReturn(identity)
+		`when`(users.findByGoogleSubAndDeletedAtIsNull("google-sub-1")).thenReturn(null)
+		`when`(users.findByEmailIgnoreCaseAndDeletedAtIsNull("ada@example.com")).thenReturn(null)
+		`when`(users.save(any(AppUser::class.java))).thenAnswer { it.arguments[0] }
+
+		val result = service.loginSocial(
+			SocialLoginRequest(SocialProvider.GOOGLE, "id-token", "nonce", deviceName = "Pixel"),
+		)
+
+		assertEquals("ada@example.com", result.user.email)
+		assertTrue(result.accessToken.isNotBlank())
+	}
+
+	@Test
+	fun `google login links a verified email to an existing password account`() {
+		val user = existingUser()
+		val identity = SocialIdentity(
+			provider = SocialProvider.GOOGLE,
+			subject = "google-sub-1",
+			email = "ada@example.com",
+			emailVerified = true,
+			displayName = "Ada",
+		)
+		`when`(socialTokens.verify(SocialProvider.GOOGLE, "id-token", null)).thenReturn(identity)
+		`when`(users.findByGoogleSubAndDeletedAtIsNull("google-sub-1")).thenReturn(null)
+		`when`(users.findByEmailIgnoreCaseAndDeletedAtIsNull("ada@example.com")).thenReturn(user)
+
+		service.loginSocial(SocialLoginRequest(SocialProvider.GOOGLE, "id-token"))
+
+		assertEquals("google-sub-1", user.googleSub)
+	}
+
+	@Test
+	fun `password login is rejected for a social-only account`() {
+		val user = existingUser().apply { passwordHash = null }
+		`when`(users.findByEmailIgnoreCaseAndDeletedAtIsNull("ada@example.com")).thenReturn(user)
+
+		val ex = assertThrows<AuthenticationFailedException> {
+			service.login(LoginRequest("ada@example.com", "secret1"))
+		}
+		assertEquals(IdentityService.INVALID_CREDENTIALS, ex.message)
 	}
 
 	@Test

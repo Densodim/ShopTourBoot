@@ -13,6 +13,7 @@ import com.shoptourr.identity.dto.LogoutRequest
 import com.shoptourr.identity.dto.RefreshTokenRequest
 import com.shoptourr.identity.dto.RegisterRequest
 import com.shoptourr.identity.dto.ResetPasswordRequest
+import com.shoptourr.identity.dto.SocialLoginRequest
 import org.slf4j.LoggerFactory
 import org.springframework.mail.MailException
 import org.springframework.mail.SimpleMailMessage
@@ -34,6 +35,7 @@ class IdentityService(
 	private val mailSender: JavaMailSender,
 	private val mailProperties: MailProperties,
 	private val authProperties: AuthProperties,
+	private val socialTokens: SocialTokenVerifier,
 	private val clock: Clock,
 ) {
 
@@ -65,10 +67,78 @@ class IdentityService(
 	@Transactional
 	fun login(request: LoginRequest): AuthTokensResponse {
 		val user = users.findByEmailIgnoreCaseAndDeletedAtIsNull(normalizeEmail(request.email))
-		if (user == null || !passwordEncoder.matches(request.password, user.passwordHash)) {
+		val hash = user?.passwordHash
+		if (user == null || hash.isNullOrBlank() || !passwordEncoder.matches(request.password, hash)) {
 			throw AuthenticationFailedException(INVALID_CREDENTIALS)
 		}
 		return issueSession(user, request.deviceName?.trim()?.takeIf { it.isNotBlank() })
+	}
+
+	@Transactional
+	fun loginSocial(request: SocialLoginRequest): AuthTokensResponse {
+		val identity = socialTokens.verify(request.provider, request.idToken, request.nonce)
+		val now = Instant.now(clock)
+		val existing = findByProviderSubject(identity) ?: identity.email?.let {
+			users.findByEmailIgnoreCaseAndDeletedAtIsNull(it)
+		}
+		val user = when {
+			existing != null -> linkProvider(existing, identity, now)
+			else -> createSocialUser(identity, request.displayName, now)
+		}
+		return issueSession(user, request.deviceName?.trim()?.takeIf { it.isNotBlank() })
+	}
+
+	private fun findByProviderSubject(identity: SocialIdentity): AppUser? =
+		when (identity.provider) {
+			SocialProvider.GOOGLE -> users.findByGoogleSubAndDeletedAtIsNull(identity.subject)
+			SocialProvider.APPLE -> users.findByAppleSubAndDeletedAtIsNull(identity.subject)
+		}
+
+	private fun linkProvider(user: AppUser, identity: SocialIdentity, now: Instant): AppUser {
+		val currentSub = when (identity.provider) {
+			SocialProvider.GOOGLE -> user.googleSub
+			SocialProvider.APPLE -> user.appleSub
+		}
+		if (currentSub != null && currentSub != identity.subject) {
+			throw AuthenticationFailedException(INVALID_SOCIAL)
+		}
+		if (currentSub == null) {
+			if (identity.email != null && !identity.emailVerified) {
+				throw AuthenticationFailedException(INVALID_SOCIAL)
+			}
+			when (identity.provider) {
+				SocialProvider.GOOGLE -> user.googleSub = identity.subject
+				SocialProvider.APPLE -> user.appleSub = identity.subject
+			}
+			user.updatedAt = now
+		}
+		return user
+	}
+
+	private fun createSocialUser(
+		identity: SocialIdentity,
+		requestedName: String?,
+		now: Instant,
+	): AppUser {
+		val email = identity.email
+			?: throw AuthenticationFailedException(MISSING_SOCIAL_EMAIL)
+		if (!identity.emailVerified) {
+			throw AuthenticationFailedException(INVALID_SOCIAL)
+		}
+		val displayName = identity.displayName
+			?: requestedName?.trim()?.takeIf { it.isNotBlank() }
+			?: email.substringBefore('@')
+		return users.save(
+			AppUser(
+				email = email,
+				passwordHash = null,
+				googleSub = identity.subject.takeIf { identity.provider == SocialProvider.GOOGLE },
+				appleSub = identity.subject.takeIf { identity.provider == SocialProvider.APPLE },
+				displayName = displayName,
+				createdAt = now,
+				updatedAt = now,
+			),
+		)
 	}
 
 	@Transactional
@@ -177,6 +247,8 @@ class IdentityService(
 		const val INVALID_CREDENTIALS = "Invalid email or password."
 		const val INVALID_REFRESH = "Refresh token is invalid or expired."
 		const val INVALID_RESET = "Invalid or expired reset token."
+		const val INVALID_SOCIAL = OidcSocialTokenVerifier.INVALID_SOCIAL
+		const val MISSING_SOCIAL_EMAIL = "The identity provider did not share an email."
 
 		fun normalizeEmail(email: String): String = email.trim().lowercase()
 	}

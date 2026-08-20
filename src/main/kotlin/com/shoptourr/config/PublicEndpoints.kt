@@ -12,6 +12,7 @@ object PublicEndpoints {
 	val API: List<String> = listOf(
 		"/api/auth/register",
 		"/api/auth/login",
+		"/api/auth/oauth",
 		"/api/auth/refresh",
 		"/api/auth/forgot-password",
 		"/api/auth/reset-password",

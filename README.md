@@ -6,6 +6,7 @@ Spring Boot **4.1** / Java **21** / Kotlin backend for [ShopTourr](https://githu
 
 - Web MVC + Validation + Problem Details
 - Security + OAuth2 Resource Server (first-party HS256 JWT)
+- Federated Google / Apple login: `POST /api/auth/oauth` verifies provider ID tokens via JWKS (`VOYAGE_GOOGLE_CLIENT_IDS`, `VOYAGE_APPLE_AUDIENCES`)
 - JPA + Flyway + PostgreSQL (`flyway-database-postgresql`)
 - Redis, Actuator, Mail
 - springdoc OpenAPI

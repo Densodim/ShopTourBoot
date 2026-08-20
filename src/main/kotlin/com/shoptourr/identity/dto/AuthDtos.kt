@@ -1,5 +1,6 @@
 package com.shoptourr.identity.dto
 
+import com.shoptourr.identity.SocialProvider
 import io.valix.annotations.Email
 import io.valix.annotations.MaxLength
 import io.valix.annotations.MinLength
@@ -68,6 +69,24 @@ data class ForgotPasswordRequest(
 	@NotBlank
 	@Email
 	val email: String,
+)
+
+data class SocialLoginRequest(
+	val provider: SocialProvider,
+
+	@NotBlank
+	@MaxLength(8192)
+	@Sensitive
+	val idToken: String,
+
+	@MaxLength(128)
+	val nonce: String? = null,
+
+	@MaxLength(80)
+	val displayName: String? = null,
+
+	@MaxLength(120)
+	val deviceName: String? = null,
 )
 
 data class ResetPasswordRequest(

@@ -5,6 +5,7 @@ import com.shoptourr.identity.dto.LoginRequest
 import com.shoptourr.identity.dto.RefreshTokenRequest
 import com.shoptourr.identity.dto.RegisterRequest
 import com.shoptourr.identity.dto.ResetPasswordRequest
+import com.shoptourr.identity.dto.SocialLoginRequest
 import io.valix.generated.ValixRegistry
 import io.valix.spring.ValixFrameworkValidator
 import org.junit.jupiter.api.Test
@@ -69,6 +70,7 @@ class AuthDtoValidationTest {
 			RefreshTokenRequest(refreshToken = " "),
 			ForgotPasswordRequest(email = "nope"),
 			ResetPasswordRequest(email = "nope", token = "short", newPassword = "ab"),
+			SocialLoginRequest(provider = SocialProvider.GOOGLE, idToken = " "),
 		)
 
 		invalid.forEach { request ->

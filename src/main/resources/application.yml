@@ -102,6 +102,9 @@ voyage:
     refresh-token-ttl: 30d
   auth:
     reset-token-ttl: 30m
+  oauth:
+    google-client-ids: ${VOYAGE_GOOGLE_CLIENT_IDS:}
+    apple-audiences: ${VOYAGE_APPLE_AUDIENCES:}
   fx:
     enabled: true
     base-url: ${VOYAGE_FX_BASE_URL:https://open.er-api.com/v6/latest}

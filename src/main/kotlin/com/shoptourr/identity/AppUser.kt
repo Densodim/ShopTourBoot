@@ -16,8 +16,14 @@ class AppUser(
 	@Column(nullable = false, length = 320)
 	var email: String,
 
-	@Column(name = "password_hash", nullable = false, length = 255)
-	var passwordHash: String,
+	@Column(name = "password_hash", length = 255)
+	var passwordHash: String?,
+
+	@Column(name = "google_sub", length = 255)
+	var googleSub: String? = null,
+
+	@Column(name = "apple_sub", length = 255)
+	var appleSub: String? = null,
 
 	@Column(name = "display_name", nullable = false, length = 120)
 	var displayName: String,
