@@ -2,6 +2,7 @@ package com.shoptourr.media
 
 import com.shoptourr.DomainValidationException
 import com.shoptourr.MediaNotReadyException
+import com.shoptourr.ResourceConflictException
 import com.shoptourr.ResourceNotFoundException
 import com.shoptourr.config.MediaProperties
 import com.shoptourr.media.dto.ConfirmMediaUploadRequest
@@ -61,13 +62,7 @@ class MediaService(
 	fun storeBytes(mediaId: UUID, body: ByteArray) {
 		val asset = assets.findByIdAndDeletedAtIsNull(mediaId)
 			?: throw ResourceNotFoundException("Media not found.")
-		if (asset.status == MediaStatus.READY.name) {
-			throw DomainValidationException("Media is already confirmed.")
-		}
-		val now = Instant.now(clock)
-		if (asset.uploadExpiresAt?.let { !now.isBefore(it) } == true) {
-			throw DomainValidationException("Upload URL has expired.")
-		}
+		assertUploadOpen(asset)
 		if (body.isEmpty()) {
 			throw DomainValidationException("Empty upload.")
 		}
@@ -89,10 +84,60 @@ class MediaService(
 	}
 
 	@Transactional(readOnly = true)
+	fun uploadOffset(mediaId: UUID): Long {
+		val asset = assets.findByIdAndDeletedAtIsNull(mediaId)
+			?: throw ResourceNotFoundException("Media not found.")
+		assertUploadOpen(asset)
+		return receivedBytes(asset)
+	}
+
+	@Transactional
+	fun appendBytes(mediaId: UUID, offset: Long, chunk: ByteArray): Long {
+		val asset = assets.findByIdAndDeletedAtIsNull(mediaId)
+			?: throw ResourceNotFoundException("Media not found.")
+		assertUploadOpen(asset)
+		if (chunk.isEmpty()) {
+			throw DomainValidationException("Empty upload.")
+		}
+		val expected = asset.byteSize
+		val current = receivedBytes(asset)
+		if (offset != current) {
+			throw ResourceConflictException("Upload offset does not match received bytes.")
+		}
+		if (current + chunk.size > expected) {
+			throw DomainValidationException("Chunk exceeds declared file size.")
+		}
+		if (current + chunk.size > MAX_BYTES) {
+			throw DomainValidationException("File exceeds 12MB limit.")
+		}
+		val key = keyFor(asset)
+		blobs.append(key, asset.contentType, chunk)
+		asset.storageKey = key
+		asset.content = null
+		asset.updatedAt = Instant.now(clock)
+		val received = current + chunk.size
+		if (received == expected) {
+			val complete = blobs.get(key) ?: throw DomainValidationException("Upload hash does not match sha256Hex.")
+			asset.sha256Hex?.let { expectedHash ->
+				if (!expectedHash.equals(sha256Hex(complete), ignoreCase = true)) {
+					blobs.delete(key)
+					asset.storageKey = null
+					throw DomainValidationException("Upload hash does not match sha256Hex.")
+				}
+			}
+			asset.status = MediaStatus.UPLOADED.name
+		}
+		return received
+	}
+
+	@Transactional(readOnly = true)
 	fun loadBytes(mediaId: UUID): StoredMedia {
 		val asset = assets.findByIdAndDeletedAtIsNull(mediaId)
 			?: throw ResourceNotFoundException("Media not found.")
 		val bytes = loadPayload(asset) ?: throw MediaNotReadyException()
+		if (asset.status == MediaStatus.PENDING_UPLOAD.name && bytes.size.toLong() != asset.byteSize) {
+			throw MediaNotReadyException()
+		}
 		return StoredMedia(asset.contentType, bytes)
 	}
 
@@ -132,11 +177,20 @@ class MediaService(
 	}
 
 	private fun hasPayload(asset: MediaAsset): Boolean {
-		val key = asset.storageKey
-		if (key != null && blobs.exists(key)) {
-			return true
+		val bytes = loadPayload(asset) ?: return false
+		return bytes.isNotEmpty() && bytes.size.toLong() == asset.byteSize
+	}
+
+	private fun receivedBytes(asset: MediaAsset): Long = loadPayload(asset)?.size?.toLong() ?: 0L
+
+	private fun assertUploadOpen(asset: MediaAsset) {
+		if (asset.status == MediaStatus.READY.name) {
+			throw DomainValidationException("Media is already confirmed.")
 		}
-		return asset.content != null
+		val now = Instant.now(clock)
+		if (asset.uploadExpiresAt?.let { !now.isBefore(it) } == true) {
+			throw DomainValidationException("Upload URL has expired.")
+		}
 	}
 
 	private fun loadPayload(asset: MediaAsset): ByteArray? {

@@ -26,6 +26,17 @@ class LocalMediaBlobStoreTest {
 	}
 
 	@Test
+	fun `append concatenates onto an existing object`() {
+		val store = LocalMediaBlobStore(root)
+		val key = "media/11111111-1111-1111-1111-111111111111/22222222-2222-2222-2222-222222222222"
+
+		store.put(key, "image/jpeg", byteArrayOf(1, 2))
+		store.append(key, "image/jpeg", byteArrayOf(3, 4))
+
+		assertArrayEquals(byteArrayOf(1, 2, 3, 4), store.get(key))
+	}
+
+	@Test
 	fun `missing keys are absent`() {
 		val store = LocalMediaBlobStore(root)
 

@@ -4,6 +4,7 @@ import org.slf4j.LoggerFactory
 import software.amazon.awssdk.core.exception.SdkException
 import software.amazon.awssdk.core.sync.RequestBody
 import software.amazon.awssdk.services.s3.S3Client
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest
 import software.amazon.awssdk.services.s3.model.GetObjectRequest
 import software.amazon.awssdk.services.s3.model.HeadObjectRequest
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException
@@ -55,6 +56,17 @@ class S3MediaBlobStore(
 		} catch (ex: SdkException) {
 			log.warn("S3 head failed for key={}", key, ex)
 			false
+		}
+	}
+
+	override fun delete(key: String) {
+		try {
+			s3.deleteObject(
+				DeleteObjectRequest.builder().bucket(bucket).key(key).build(),
+			)
+		} catch (ex: SdkException) {
+			log.warn("S3 delete failed for key={}", key, ex)
+			throw IllegalStateException("Object storage unavailable.")
 		}
 	}
 

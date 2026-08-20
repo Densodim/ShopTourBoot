@@ -2,6 +2,7 @@ package com.shoptourr.media
 
 import com.shoptourr.DomainValidationException
 import com.shoptourr.MediaNotReadyException
+import com.shoptourr.ResourceConflictException
 import com.shoptourr.config.MediaProperties
 import com.shoptourr.config.OcrProperties
 import com.shoptourr.media.dto.ConfirmMediaUploadRequest
@@ -183,6 +184,52 @@ class MediaServiceTest {
 	}
 
 	@Test
+	fun `appendBytes concatenates chunks and marks uploaded when complete`() {
+		val payload = byteArrayOf(1, 2, 3, 4)
+		val asset = asset(
+			status = MediaStatus.PENDING_UPLOAD.name,
+			sha256Hex = sha256Hex(payload),
+			byteSize = 4,
+		)
+		`when`(assets.findByIdAndDeletedAtIsNull(asset.id)).thenReturn(asset)
+
+		assertEquals(0L, service.uploadOffset(asset.id))
+		assertEquals(2L, service.appendBytes(asset.id, 0L, byteArrayOf(1, 2)))
+		assertEquals(MediaStatus.PENDING_UPLOAD.name, asset.status)
+		assertEquals(4L, service.appendBytes(asset.id, 2L, byteArrayOf(3, 4)))
+		assertEquals(MediaStatus.UPLOADED.name, asset.status)
+		assertTrue(payload.contentEquals(blobs.get(MediaService.keyFor(asset))))
+	}
+
+	@Test
+	fun `appendBytes rejects a mismatched offset`() {
+		val asset = asset(status = MediaStatus.PENDING_UPLOAD.name, byteSize = 4)
+		`when`(assets.findByIdAndDeletedAtIsNull(asset.id)).thenReturn(asset)
+		service.appendBytes(asset.id, 0L, byteArrayOf(1, 2))
+
+		assertThrows<ResourceConflictException> {
+			service.appendBytes(asset.id, 0L, byteArrayOf(1, 2))
+		}
+	}
+
+	@Test
+	fun `appendBytes checks sha256 only after the last chunk`() {
+		val payload = byteArrayOf(1, 2, 3, 4)
+		val asset = asset(
+			status = MediaStatus.PENDING_UPLOAD.name,
+			sha256Hex = "0".repeat(64),
+			byteSize = 4,
+		)
+		`when`(assets.findByIdAndDeletedAtIsNull(asset.id)).thenReturn(asset)
+
+		service.appendBytes(asset.id, 0L, byteArrayOf(1, 2))
+		assertThrows<DomainValidationException> {
+			service.appendBytes(asset.id, 2L, byteArrayOf(3, 4))
+		}
+		assertEquals(null, asset.storageKey)
+	}
+
+	@Test
 	fun `legacy bytea content is still readable`() {
 		val payload = byteArrayOf(4, 5, 6)
 		val asset = asset(status = MediaStatus.UPLOADED.name, content = payload)
@@ -200,12 +247,13 @@ class MediaServiceTest {
 		sha256Hex: String? = null,
 		contentType: String = "image/jpeg",
 		uploadExpiresAt: Instant? = null,
+		byteSize: Long = content?.size?.toLong() ?: 4,
 	) = MediaAsset(
 		userId = userId,
 		purpose = MediaPurpose.RECEIPT.name,
 		status = status,
 		contentType = contentType,
-		byteSize = content?.size?.toLong() ?: 4,
+		byteSize = byteSize,
 		sha256Hex = sha256Hex,
 		content = content,
 		uploadExpiresAt = uploadExpiresAt,
@@ -227,4 +275,8 @@ internal class InMemoryMediaBlobStore : MediaBlobStore {
 	override fun get(key: String): ByteArray? = items[key]?.copyOf()
 
 	override fun exists(key: String): Boolean = items.containsKey(key)
+
+	override fun delete(key: String) {
+		items.remove(key)
+	}
 }

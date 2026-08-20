@@ -2,6 +2,7 @@ package com.shoptourr.media
 
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.StandardOpenOption
 
 class LocalMediaBlobStore(
 	root: Path,
@@ -28,6 +29,19 @@ class LocalMediaBlobStore(
 	}
 
 	override fun exists(key: String): Boolean = Files.isRegularFile(resolve(key))
+
+	override fun append(key: String, contentType: String, bytes: ByteArray) {
+		val path = resolve(key)
+		if (!Files.isRegularFile(path)) {
+			put(key, contentType, bytes)
+			return
+		}
+		Files.write(path, bytes, StandardOpenOption.APPEND)
+	}
+
+	override fun delete(key: String) {
+		Files.deleteIfExists(resolve(key))
+	}
 
 	private fun resolve(key: String): Path {
 		require(key.isNotBlank() && !key.contains("..")) { "Invalid storage key." }

@@ -16,8 +16,11 @@ import org.springframework.security.oauth2.jwt.JwtDecoder
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.head
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.header
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import java.util.UUID
 
@@ -66,5 +69,36 @@ class DevUploadControllerTest {
 			.andExpect(status().isOk)
 			.andExpect(content().contentType(MediaType.IMAGE_JPEG))
 			.andExpect(content().bytes(payload))
+	}
+
+	@Test
+	fun `head returns the current upload offset`() {
+		org.mockito.Mockito.`when`(mediaService.uploadOffset(mediaId)).thenReturn(256L)
+
+		mockMvc.perform(head("/dev-uploads/$mediaId"))
+			.andExpect(status().isNoContent)
+			.andExpect(header().string("Upload-Offset", "256"))
+			.andExpect(header().string("Tus-Resumable", "1.0.0"))
+	}
+
+	@Test
+	fun `patch appends a chunk and returns the next offset`() {
+		val chunk = byteArrayOf(1, 2)
+		org.mockito.Mockito.`when`(
+			mediaService.appendBytes(
+				org.mockito.ArgumentMatchers.eq(mediaId) ?: mediaId,
+				org.mockito.ArgumentMatchers.anyLong(),
+				org.mockito.ArgumentMatchers.any() ?: chunk,
+			),
+		).thenReturn(2L)
+
+		mockMvc.perform(
+			patch("/dev-uploads/$mediaId")
+				.header("Upload-Offset", "0")
+				.contentType(MediaType.APPLICATION_OCTET_STREAM)
+				.content(chunk),
+		)
+			.andExpect(status().isNoContent)
+			.andExpect(header().string("Upload-Offset", "2"))
 	}
 }

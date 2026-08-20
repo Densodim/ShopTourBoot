@@ -13,7 +13,7 @@ import java.time.Duration
 @ConfigurationProperties(prefix = "voyage.cors")
 data class CorsProperties(
 	val allowedOrigins: List<String> = listOf("http://localhost:5173", "http://localhost:3000"),
-	val allowedMethods: List<String> = listOf("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"),
+	val allowedMethods: List<String> = listOf("GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"),
 	val allowedHeaders: List<String> = listOf("*"),
 	val exposedHeaders: List<String> = listOf(
 		"X-Request-Id",
@@ -21,6 +21,8 @@ data class CorsProperties(
 		"X-RateLimit-Limit",
 		"X-RateLimit-Remaining",
 		"X-RateLimit-Reset",
+		"Upload-Offset",
+		"Tus-Resumable",
 	),
 	val allowCredentials: Boolean = true,
 	val maxAge: Duration = Duration.ofHours(1),
